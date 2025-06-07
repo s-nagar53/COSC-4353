@@ -1,4 +1,5 @@
 # COSC-4353
-This is the project repository for group project COSC 4353
-Sakina Nagarwala
-helloooo
+This is the project repository for group project COSC 4353  
+  
+Team Members:  
+Sakina Nagarwala  
