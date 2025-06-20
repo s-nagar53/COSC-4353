@@ -1,0 +1,192 @@
+/* Base Reset */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+  
+  html, body, #root {
+    height: 100%;
+    width: 100%;
+    font-family: 'Segoe UI', sans-serif;
+    background-color: #eef2f5;
+  }
+  
+  .page-wrapper {
+    background: url('/images/background.jpg') no-repeat center center / cover;
+    height: 100vh;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    color: white;
+    text-align: center;
+    padding: 1rem;
+  }
+  
+
+  /* Split Screen Layout */
+  .login-page {
+    display: flex;
+    height: 100%;
+  }
+  
+  /* Left Panel - Login */
+  .login-left {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem;
+  }
+  
+  
+ /* Right Panel - Mission */
+ .login-right {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem;
+    height: 100%;
+    width: auto;
+    background: transparent; /* Remove solid background unless you want it */
+  }
+  
+  
+  /* Stretch mission box all the way */
+  .mission {
+    background-color: rgba(41, 96, 104, 0.9); /* Semi-transparent teal box */
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    max-width: 500px;
+    width: 100%;
+    color: white;
+    text-align: center;
+  }
+  
+  .mission h1 {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .mission p {
+    font-size: 1.1rem;
+    opacity: 0.9;
+  }
+  
+  /* Login Box */
+  
+  .login-container {
+    background-color: #ffffff;
+    padding: 2rem;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  }
+  
+  .login-container h2 {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    color: #333;
+  }
+  
+  .login-container input {
+    width: 100%;
+    padding: 0.75rem;
+    margin-bottom: 1rem;
+    border: 1px solid #b07b10;
+    border-radius: 6px;
+    background-color: #ffffff;  
+    color: #000000;             
+  }
+  
+  .login-container button {
+    width: 100%;
+    padding: 0.75rem;
+    background-color: #285769;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  
+  .login-container button:hover {
+    background-color: #133644;
+  }
+  
+  .signup-prompt {
+    margin-top: 1rem;
+    font-size: 0.95rem;
+    text-align: center;
+    color: #333;
+  }
+  
+  .signup-prompt a {
+    color: #285769;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.3s ease;
+  }
+  
+  .signup-prompt a:hover {
+    color: #133644;
+    text-decoration: underline;
+  }
+  
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+    width: 100%;
+  }
+  
+  .form-group label {
+    margin-bottom: 0.25rem;
+    font-weight: 500;
+    color: #333;
+  }
+  
+  .form-group select {
+    width: 100%;
+    padding: 0.6rem;
+    font-size: 1rem;
+    border: 1px solid #b07b10;
+    border-radius: 6px;
+    background-color: #fff;
+    color: #000;
+  }
+
+  
+  .form-success {
+    color: green;
+    margin-top: 10px;
+  }
+  .form-error {
+    color: red;
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+    text-align: center;
+  }
+  
+  /* Responsive Stack for Small Screens */
+  @media (max-width: 768px) {
+    .login-page {
+      flex-direction: column;
+    }
+  
+    .login-left, .login-right {
+      flex: none;
+      width: 100%;
+    }
+  
+    .mission {
+      text-align: center;
+    }
+  }
+  

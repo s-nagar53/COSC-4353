@@ -1,0 +1,216 @@
+.page-wrapper.profile-scroll {
+    max-height: 100vh;
+    overflow-y: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem;
+  }
+  
+  .profile-container {
+    background-color: #fff;
+    padding: 2.5rem 2rem;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 600px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.1);
+    overflow-y: auto;
+  }
+  
+  .profile-container h2 {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    color: #333;
+  }
+  
+  .profile-container form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  /* General input styles */
+  .profile-container input,
+  .profile-container textarea,
+  .profile-container .date-picker {
+    width: 100%;
+    padding: 0.75rem;
+    font-size: 1rem;
+    border: 1px solid #357189;
+    border-radius: 6px;
+    color: #333;
+    background-color: #fff;
+    transition: border-color 0.3s ease;
+  }
+  
+  .profile-container input:focus,
+  .profile-container textarea:focus,
+  .profile-container .date-picker:focus {
+    border-color: #133644;
+    outline: none;
+  }
+  
+  .profile-container input::placeholder,
+  .profile-container textarea::placeholder {
+    color: #888;
+  }
+  
+  .profile-container label {
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+    display: block;
+    color: #333;
+  }
+  
+  .profile-container textarea {
+    resize: vertical;
+  }
+  
+  /* Clean and styled select box (state dropdown) */
+  .profile-container select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-color: #fff;
+    border: 1px solid #357189;
+    border-radius: 6px;
+    padding: 0.75rem;
+    font-size: 1rem;
+    color: #333;
+    width: 100%;
+    box-shadow: none;
+    transition: border-color 0.3s ease;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml;utf8,<svg fill='black' height='16' viewBox='0 0 24 24' width='16' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1rem;
+  }
+  
+  .profile-container select:focus {
+    border-color: #133644;
+    outline: none;
+    box-shadow: none;
+  }
+  
+  /* Grouped sections */
+  .form-group {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .inline-group {
+    display: flex;
+    gap: 1rem;
+  }
+  
+  .inline-group .form-group {
+    flex: 1;
+  }
+  
+  /* Skills box using react-select */
+  .react-select__control {
+    border: 1px solid #357189 !important;
+    border-radius: 6px !important;
+    background-color: #fff !important;
+    font-size: 1rem;
+    color: #333 !important;
+    transition: border-color 0.3s ease;
+  }
+  
+  .react-select__control--is-focused {
+    border-color: #133644 !important;
+    box-shadow: 0 0 0 1px #133644 !important;
+  }
+  
+  .react-select__placeholder {
+    color: #888 !important;
+  }
+  
+  .react-select__single-value,
+  .react-select__multi-value__label {
+    color: #333 !important;
+  }
+  
+  .react-select__menu {
+    background-color: #fff;
+    color: #333;
+  }
+  
+  .react-select__option {
+    background-color: #fff;
+    color: #333;
+  }
+  
+  .react-select__option--is-focused {
+    background-color: #e6f0ff;
+  }
+  
+  .react-select__option--is-selected {
+    background-color: #d0e7ff;
+    color: #000;
+  }
+  
+  /* Multi-line select fallback */
+  select[multiple] {
+    height: auto;
+    min-height: 100px;
+    padding: 0.5rem;
+    font-size: 0.95rem;
+    border-radius: 6px;
+    border: 1px solid #357189;
+    color: #333;
+  }
+  
+  /* Date list */
+  .selected-dates {
+    list-style-type: none;
+    padding-left: 0;
+    margin-top: 0.5rem;
+    color: #333;
+  }
+  
+  .selected-dates li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background-color: #f0f0f0;
+    padding: 6px 10px;
+    border-radius: 6px;
+    margin-bottom: 4px;
+    color: #333;
+    font-size: 0.95rem;
+  }
+  
+  .selected-dates button {
+    background: none;
+    border: none;
+    color: #c00;
+    font-size: 1rem;
+    cursor: pointer;
+  }
+  
+  /* Error message */
+  .form-error {
+    color: red;
+    font-size: 0.9rem;
+    margin-top: -0.5rem;
+    text-align: left;
+  }
+  
+  /* Submit button */
+  .profile-container button[type="submit"] {
+    padding: 0.75rem;
+    background-color: #357189;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  
+  .profile-container button:hover {
+    background-color: #133644;
+  }
+  
