@@ -5,6 +5,7 @@ import Profile from './pages/Profile';
 import VolunteerDashboard from './pages/VolunteerDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminProfile from './pages/AdminProfile';
+import EventMangaement from './pages/EventMangaement';
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
         <Route path="/volunteer-dashboard" element={<VolunteerDashboard />} />
         <Route path="/admin-dashboard" element={<AdminDashboard />} />
         <Route path="/admin-profile" element={<AdminProfile />} />
+        <Route path="/event-management" element={<EventMangaement />} />
 
       </Routes>
     </Router>
