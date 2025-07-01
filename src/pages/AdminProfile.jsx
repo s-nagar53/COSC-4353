@@ -49,7 +49,7 @@ function AdminProfile() {
     if (Object.keys(validationErrors).length === 0) {
       console.log('Admin profile submitted:', form);
       localStorage.setItem('isProfileComplete', 'true');
-      navigate('/admin-dashboar');
+      navigate('/admin-dashboard');
     }
   };
 
