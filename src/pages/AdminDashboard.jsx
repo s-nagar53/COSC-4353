@@ -23,11 +23,15 @@ function AdminDashboard() {
     navigate('/volunteer-matching');
   };
 
+  const handleEditProfile = (e) => {
+    navigate('/admin-profile');
+  };
+
   return (
     <div className="page-wrapper profile-scroll">
       <div className="profile-container">
         <form onSubmit={handleSubmit}>
-          <h1>Welcome to Your Dashboard ADMIN</h1>
+          <h1>Welcome to the Admin Dashboard </h1>
           <h2>You have successfully logged in!</h2>
           <button type="button" onClick={handleManageEvents} style={{ marginTop: '1rem' }}>
             Manage Event
@@ -37,6 +41,9 @@ function AdminDashboard() {
           </button>
           <button type="button" onClick={handleVolunteerMatching} style={{ marginTop: '1rem' }}>
             Volunteer Matching
+          </button>
+          <button type="button" onClick={handleEditProfile} style={{ marginTop: '1rem' }}>
+            Edit Profile
           </button>
         </form>
       </div>
