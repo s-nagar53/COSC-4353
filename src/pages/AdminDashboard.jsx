@@ -3,14 +3,20 @@ import { useNavigate } from 'react-router-dom';
 import React, { useState } from 'react';
 import './Profile.css';
 
-function AdminDashboard() 
-{
+function AdminDashboard() {
   const navigate = useNavigate();
 
-  // Since this is just navigation, we don't need validation
   const handleSubmit = (e) => {
     e.preventDefault();
-    navigate('/event-management');
+    // This won't be called since buttons are type="button"
+  };
+
+  const handleManageEvents = () => {
+    navigate('/manage-event');
+  };
+
+  const handleCreateEvent = () => {
+    navigate('/create-event');
   };
 
   return (
@@ -19,8 +25,11 @@ function AdminDashboard()
         <form onSubmit={handleSubmit}>
           <h1>Welcome to Your Dashboard ADMIN</h1>
           <h2>You have successfully logged in!</h2>
-          <button type="submit" style={{ marginTop: '1rem' }}>
-            Event Management
+          <button type="button" onClick={handleManageEvents} style={{ marginTop: '1rem' }}>
+            Manage Event
+          </button>
+          <button type="button" onClick={handleCreateEvent} style={{ marginTop: '1rem' }}>
+            Create Event
           </button>
         </form>
       </div>

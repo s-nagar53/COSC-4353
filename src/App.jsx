@@ -5,7 +5,9 @@ import Profile from './pages/Profile';
 import VolunteerDashboard from './pages/VolunteerDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminProfile from './pages/AdminProfile';
-import EventMangaement from './pages/EventMangaement';
+import CreateEvent from './pages/CreateEvent';
+import ManageEvent from './pages/ManageEvent';
+import EditEvent from './pages/EditEvent'
 
 function App() {
   return (
@@ -18,7 +20,9 @@ function App() {
         <Route path="/volunteer-dashboard" element={<VolunteerDashboard />} />
         <Route path="/admin-dashboard" element={<AdminDashboard />} />
         <Route path="/admin-profile" element={<AdminProfile />} />
-        <Route path="/event-management" element={<EventMangaement />} />
+        <Route path="/create-event" element={<CreateEvent />} />
+        <Route path="/manage-event" element={<ManageEvent />} />
+        <Route path="/edit-event/:id" element={<EditEvent />} />
 
       </Routes>
     </Router>
