@@ -19,6 +19,10 @@ function AdminDashboard() {
     navigate('/create-event');
   };
 
+  const handleVolunteerMatching = (e) => {
+    navigate('/volunteer-matching');
+  };
+
   return (
     <div className="page-wrapper profile-scroll">
       <div className="profile-container">
@@ -30,6 +34,9 @@ function AdminDashboard() {
           </button>
           <button type="button" onClick={handleCreateEvent} style={{ marginTop: '1rem' }}>
             Create Event
+          </button>
+          <button type="button" onClick={handleVolunteerMatching} style={{ marginTop: '1rem' }}>
+            Volunteer Matching
           </button>
         </form>
       </div>

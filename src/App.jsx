@@ -7,7 +7,8 @@ import AdminDashboard from './pages/AdminDashboard';
 import AdminProfile from './pages/AdminProfile';
 import CreateEvent from './pages/CreateEvent';
 import ManageEvent from './pages/ManageEvent';
-import EditEvent from './pages/EditEvent'
+import EditEvent from './pages/EditEvent';
+import VolunteerMatchingForm from './pages/VolunteerMatchingForm';
 
 function App() {
   return (
@@ -23,6 +24,7 @@ function App() {
         <Route path="/create-event" element={<CreateEvent />} />
         <Route path="/manage-event" element={<ManageEvent />} />
         <Route path="/edit-event/:id" element={<EditEvent />} />
+        <Route path="/volunteer-matching" element={<VolunteerMatchingForm />} />
 
       </Routes>
     </Router>
