@@ -1,5 +1,5 @@
-import { useNavigate } from 'react-router-dom';
-import React, { useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
 import './Profile.css';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
@@ -35,11 +35,34 @@ const SKILL_OPTIONS = [
     { value: 'Social Media / Marketing', label: 'Social Media / Marketing' },
     { value: 'Technical Support / IT Help', label: 'Technical Support / IT Help' },
     { value: 'Elderly Care / Companionship', label: 'Elderly Care / Companionship' },
-  ];
-  
+];
 
-function EventMangaement() {
+// Helper function to get event by ID
+const getEventById = (id) => {
+  const events = JSON.parse(localStorage.getItem('events') || '[]');
+  return events.find(event => event.id === id);
+};
+
+// Helper function to update event
+const updateEvent = (eventId, updatedEventData) => {
+  const events = JSON.parse(localStorage.getItem('events') || '[]');
+  const eventIndex = events.findIndex(event => event.id === eventId);
+  
+  if (eventIndex !== -1) {
+    events[eventIndex] = {
+      ...events[eventIndex],
+      ...updatedEventData,
+      updatedAt: new Date().toISOString()
+    };
+    localStorage.setItem('events', JSON.stringify(events));
+    return events[eventIndex];
+  }
+  return null;
+};
+
+function EditEvent() {
   const navigate = useNavigate();
+  const { id } = useParams();
   const [form, setForm] = useState({
     eventName: '',
     eventDescription: '',
@@ -52,8 +75,34 @@ function EventMangaement() {
     urgency: '',
     availability: [],
   });
-
   const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [eventNotFound, setEventNotFound] = useState(false);
+
+  useEffect(() => {
+    const event = getEventById(id);
+    if (event) {
+      // Convert stored event data back to form format
+      const availability = event.availabilityDates?.map(dateObj => new Date(dateObj.date)) || 
+                          event.availability?.map(date => new Date(date)) || [];
+      
+      setForm({
+        eventName: event.eventName || '',
+        eventDescription: event.eventDescription || '',
+        address1: event.address1 || '',
+        address2: event.address2 || '',
+        city: event.city || '',
+        state: event.state || '',
+        zip: event.zip || '',
+        skills: event.skills || [],
+        urgency: event.urgency || '',
+        availability: availability,
+      });
+    } else {
+      setEventNotFound(true);
+    }
+    setLoading(false);
+  }, [id]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -87,17 +136,78 @@ function EventMangaement() {
     e.preventDefault();
     const validationErrors = validate();
     setErrors(validationErrors);
+    
     if (Object.keys(validationErrors).length === 0) {
-    console.log('Event submitted:', form);
-    localStorage.setItem('isEventComplete', 'true');
-    navigate('/admin-dashboard');
+      // Process the form data before updating
+      const processedFormData = {
+        ...form,
+        // Convert urgency code to name for better display
+        urgencyLevel: Urgency_LVL.find(u => u.code === form.urgency)?.name || form.urgency,
+        // Convert state code to name for better display
+        stateName: US_STATES.find(s => s.code === form.state)?.name || form.state,
+        // Format availability dates
+        availabilityDates: form.availability.map(date => ({
+          date: date.toISOString(),
+          formatted: date.toLocaleDateString()
+        }))
+      };
+
+      // Update the event
+      const updatedEvent = updateEvent(id, processedFormData);
+      if (updatedEvent) {
+        console.log('Event updated:', updatedEvent);
+        // Navigate back to manage events page
+        navigate('/manage-event');
+      } else {
+        alert('Failed to update event. Please try again.');
+      }
     }
   };
+
+  const handleCancel = () => {
+    navigate('/manage-event');
+  };
+
+  if (loading) {
+    return (
+      <div className="page-wrapper profile-scroll">
+        <div className="profile-container">
+          <h2>Loading...</h2>
+        </div>
+      </div>
+    );
+  }
+
+  if (eventNotFound) {
+    return (
+      <div className="page-wrapper profile-scroll">
+        <div className="profile-container">
+          <h2>Event Not Found</h2>
+          <p>The event you're trying to edit doesn't exist or may have been deleted.</p>
+          <div className="form-group">
+            <button 
+              onClick={() => navigate('/manage-event')}
+            >
+              Back to Events
+            </button>
+            <button 
+              onClick={() => navigate('/admin-dashboard')}
+            >
+              Back to Dashboard
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="page-wrapper profile-scroll">
       <div className="profile-container">
-        <h2>Create Event</h2>
+        <div className="form-group">
+          <h2>Edit Event</h2>
+        </div>
+        
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="eventName">Event Name</label>
@@ -264,13 +374,23 @@ function EventMangaement() {
             {errors.availability && <p className="form-error">{errors.availability}</p>}
           </div>
 
-          <button type="submit" style={{ marginTop: '1rem' }}>
-            Save Event
-          </button>
+          <div className="inline-group">
+            <button 
+              type="submit"
+            >
+              Update Event
+            </button>
+            <button 
+              type="button"
+              onClick={handleCancel}
+            >
+              Cancel
+            </button>
+          </div>
         </form>
       </div>
     </div>
   );
 }
 
-export default EventMangaement;
+export default EditEvent;
