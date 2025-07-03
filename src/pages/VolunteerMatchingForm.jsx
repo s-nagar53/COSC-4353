@@ -1,4 +1,4 @@
-// // Placeholder page for the volinteer matching form 
+//placeholder page for the volunteer matching form 
 import { useNavigate } from 'react-router-dom';
 import React, { useState } from 'react';
 import './Profile.css';
@@ -7,34 +7,39 @@ import Select from 'react-select';
 function VolunteerMatchingForm() {
   const navigate = useNavigate();
   
-  // Placeholder data
+  //mock data for volunteers (this will be updated in Assignment 3)
   const [volunteers, setVolunteers] = useState([
     { id: 1, name: 'John Doe', skills: ['Teaching', 'First Aid'], availability: 'Weekends' },
     { id: 2, name: 'Jane Smith', skills: ['Cooking', 'Driving'], availability: 'Weekdays' },
     { id: 3, name: 'Mike Johnson', skills: ['Construction', 'Painting'], availability: 'Flexible' },
   ]);
 
+  //mock data for events
   const [events, setEvents] = useState([
     { id: 1, name: 'Community Cleanup', requiredSkills: ['Physical Labor'], date: '2023-11-15' },
     { id: 2, name: 'Food Drive', requiredSkills: ['Driving', 'Cooking'], date: '2023-11-20' },
     { id: 3, name: 'Youth Mentorship', requiredSkills: ['Teaching'], date: '2023-11-25' },
   ]);
 
+  //stores matches between volunteers & events
   const [matches, setMatches] = useState([]);
   const [selectedVolunteer, setSelectedVolunteer] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [errors, setErrors] = useState({});
 
+  //format volunteers for dropdown
   const volunteerOptions = volunteers.map(v => ({
     value: v.id,
     label: `${v.name} (Skills: ${v.skills.join(', ')})`
   }));
 
+  //format events for dropdown
   const eventOptions = events.map(e => ({
     value: e.id,
     label: `${e.name} (Date: ${e.date}, Needs: ${e.requiredSkills.join(', ')})`
   }));
 
+  //handle form submission
   const handleMatch = (e) => {
     e.preventDefault();
     const newErrors = {};
@@ -43,6 +48,7 @@ function VolunteerMatchingForm() {
     setErrors(newErrors);
 
     if (selectedVolunteer && selectedEvent) {
+      //create new match
       const newMatch = {
         volunteer: volunteers.find(v => v.id === selectedVolunteer.value),
         event: events.find(e => e.id === selectedEvent.value)
@@ -53,6 +59,7 @@ function VolunteerMatchingForm() {
     }
   };
 
+  //remove a match
   const handleUnmatch = (index) => {
     const newMatches = [...matches];
     newMatches.splice(index, 1);
@@ -64,6 +71,7 @@ function VolunteerMatchingForm() {
       <div className="profile-container" style={{ overflow: 'visible' }}> 
         <h2>Volunteer Matching</h2>
         <form onSubmit={handleMatch}>
+          // volunteer dropdown
           <div className="form-group" style={{ zIndex: 2 }}> 
             <label htmlFor="volunteer">Select Volunteer</label>
             <Select
@@ -86,6 +94,7 @@ function VolunteerMatchingForm() {
             {errors.volunteer && <p className="form-error">{errors.volunteer}</p>}
           </div>
 
+          //event dropdown
           <div className="form-group" style={{ zIndex: 1 }}>
             <label htmlFor="event">Select Event</label>
             <Select
@@ -113,10 +122,11 @@ function VolunteerMatchingForm() {
           </button>
         </form>
 
+        //shows current matches
         <div className="matches-section" style={{ marginTop: '2rem' }}>
           <h3 style={{ color: 'black' }}>Current Matches</h3>
           {matches.length === 0 ? (
-            <p>No matches yet. Select a volunteer and event to create a match.</p>
+            <p style={{ color: 'black' }}>No matches yet. Select a volunteer and event to create a match.</p>
           ) : (
             <ul className="matches-list" style={{ listStyle: 'none', padding: 0 }}>
               {matches.map((match, index) => (
@@ -158,7 +168,7 @@ function VolunteerMatchingForm() {
           )}
         </div>
 
-        {/* Back to Dashboard Button */}
+        //back button
         <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginTop: '1rem' }}>
           <button 
             onClick={() => navigate('/admin-dashboard')}
