@@ -9,6 +9,8 @@ import CreateEvent from './pages/CreateEvent';
 import ManageEvent from './pages/ManageEvent';
 import EditEvent from './pages/EditEvent';
 import VolunteerMatchingForm from './pages/VolunteerMatchingForm';
+import NotificationPage from './pages/NotificationPage';
+import VolunteerHistoryPage from './pages/VolunteerHistoryPage';
 
 function App() {
   return (
@@ -25,7 +27,8 @@ function App() {
         <Route path="/manage-event" element={<ManageEvent />} />
         <Route path="/edit-event/:id" element={<EditEvent />} />
         <Route path="/volunteer-matching" element={<VolunteerMatchingForm />} />
-
+        <Route path="/notification" element={<NotificationPage />} />
+        <Route path="/volunteer-history" element={<VolunteerHistoryPage />} />
       </Routes>
     </Router>
   );
