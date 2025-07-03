@@ -50,9 +50,6 @@ function AdminDashboard() {
           <button type="button" onClick={handleVolunteerMatching} style={{ marginTop: '1rem' }}>
             Volunteer Matching
           </button>
-          <button type="button" onClick={handleNotifications} style={{ marginTop: '1rem' }}>
-            Notifications
-          </button>
           <button type="button" onClick={handleHistory} style={{ marginTop: '1rem' }}>
             Volunteer and Event History
           </button>
