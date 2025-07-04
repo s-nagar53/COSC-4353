@@ -27,6 +27,14 @@ function AdminDashboard() {
     navigate('/admin-profile');
   };
 
+  const handleNotifications = () => {
+    navigate('/notification');
+  };
+
+  const handleHistory = () => {
+    navigate('/volunteer-history');
+  };
+
   return (
     <div className="page-wrapper profile-scroll">
       <div className="profile-container">
@@ -41,6 +49,9 @@ function AdminDashboard() {
           </button>
           <button type="button" onClick={handleVolunteerMatching} style={{ marginTop: '1rem' }}>
             Volunteer Matching
+          </button>
+          <button type="button" onClick={handleHistory} style={{ marginTop: '1rem' }}>
+            Volunteer and Event History
           </button>
           <button type="button" onClick={handleEditProfile} style={{ marginTop: '1rem' }}>
             Edit Profile
