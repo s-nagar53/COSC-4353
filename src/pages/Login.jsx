@@ -22,19 +22,35 @@ function Login() {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-  
       const tokenResult = await user.getIdTokenResult();
       const role = tokenResult.claims.role;
   
+      // Fetch profile
+      const res = await fetch(`http://localhost:3001/api/profile/${user.uid}`);
+      const profile = res.ok ? await res.json() : null;
+  
+      const isComplete =
+        profile &&
+        profile.name &&
+        profile.address &&
+        profile.city &&
+        profile.state &&
+        profile.zip &&
+        Array.isArray(profile.skills) &&
+        profile.skills.length > 0 &&
+        Array.isArray(profile.availability) &&
+        profile.availability.length > 0;
+  
+      // Redirect based on role and profile status
       if (role === 'admin') {
-        navigate('/admin-dashboard');
+        navigate(profile ? '/admin-dashboard' : '/admin-profile');
       } else if (role === 'volunteer') {
-        const isProfileComplete = localStorage.getItem('isProfileComplete');
-        navigate(isProfileComplete === 'true' ? '/volunteer-dashboard' : '/profile');
+        navigate(isComplete ? '/volunteer-dashboard' : '/profile');
       } else {
         setError('No role assigned. Contact support.');
       }
     } catch (err) {
+      console.error(err);
       setError(err.message);
     }
   };

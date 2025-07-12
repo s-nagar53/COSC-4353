@@ -1,6 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import React, { useState } from 'react';
 import './Profile.css';
+import { getAuth } from 'firebase/auth';
+import { useEffect } from 'react';
 
 const US_STATES = [
   { code: 'TX', name: 'Texas' },
@@ -25,6 +27,39 @@ function AdminProfile() {
   const [errors, setErrors] = useState({});
   const VALID_KEY = 'secure-admin-2025'; // Update this key securely in production
 
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const auth = getAuth();
+      const user = auth.currentUser;
+  
+      if (!user) return;
+  
+      try {
+        const res = await fetch(`http://localhost:3001/api/profile/${user.uid}`);
+        if (!res.ok) {
+          console.warn('No profile found for admin:', user.uid);
+          return;
+        }
+  
+        const profile = await res.json();
+  
+        setForm({
+          fullName: profile.name || '',
+          address1: profile.address || '',
+          address2: profile.address2 || '',
+          city: profile.city || '',
+          state: profile.state || '',
+          zip: profile.zip || '',
+          verificationKey: '', // don't pre-fill this for security
+        });
+      } catch (err) {
+        console.error('Failed to load admin profile:', err);
+      }
+    };
+  
+    fetchProfile();
+  }, []);
+  
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm({ ...form, [name]: value });
@@ -42,14 +77,49 @@ function AdminProfile() {
     return newErrors;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const validationErrors = validate();
     setErrors(validationErrors);
-    if (Object.keys(validationErrors).length === 0) {
-      console.log('Admin profile submitted:', form);
-      localStorage.setItem('isProfileComplete', 'true');
-      navigate('/admin-dashboard');
+  
+    if (Object.keys(validationErrors).length > 0) return;
+  
+    const auth = getAuth();
+    const user = auth.currentUser;
+  
+    if (!user) {
+      alert('User not authenticated');
+      return;
+    }
+  
+    const profileData = {
+      uid: user.uid,
+      role: 'admin',
+      name: form.fullName,
+      address: form.address1,
+      address2: form.address2,
+      city: form.city,
+      state: form.state,
+      zip: form.zip,
+    };
+  
+    try {
+      const res = await fetch('http://localhost:3001/api/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profileData),
+      });
+  
+      if (res.ok) {
+        localStorage.setItem('isProfileComplete', 'true');
+        navigate('/admin-dashboard');
+      } else {
+        const result = await res.json();
+        alert('Failed to save profile: ' + (result.message || 'Unknown error'));
+      }
+    } catch (err) {
+      console.error('Error saving profile:', err);
+      alert('Something went wrong. Please try again.');
     }
   };
 

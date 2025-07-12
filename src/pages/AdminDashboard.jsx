@@ -2,6 +2,8 @@
 import { useNavigate } from 'react-router-dom';
 import React, { useState } from 'react';
 import './Profile.css';
+import { getAuth, signOut } from 'firebase/auth';
+
 
 function AdminDashboard() {
   const navigate = useNavigate();
@@ -35,6 +37,18 @@ function AdminDashboard() {
     navigate('/volunteer-history');
   };
 
+  const handleLogout = () => {
+    const auth = getAuth();
+    signOut(auth)
+      .then(() => {
+        navigate('/login');
+      })
+      .catch((error) => {
+        console.error('Logout failed:', error);
+        alert('Something went wrong while logging out.');
+      });
+  };
+
   return (
     <div className="page-wrapper profile-scroll">
       <div className="profile-container">
@@ -55,6 +69,9 @@ function AdminDashboard() {
           </button>
           <button type="button" onClick={handleEditProfile} style={{ marginTop: '1rem' }}>
             Edit Profile
+          </button>
+          <button type="button" onClick={handleLogout} style={{ marginTop: '1rem', backgroundColor: '#d9534f', color: 'white' }}>
+            Logout
           </button>
         </form>
       </div>

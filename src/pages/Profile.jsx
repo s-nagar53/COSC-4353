@@ -4,6 +4,8 @@ import './Profile.css';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import Select from 'react-select';
+import { getAuth } from 'firebase/auth';
+import { useEffect } from 'react';
 
 const US_STATES = [
   { code: 'TX', name: 'Texas' },
@@ -47,6 +49,41 @@ function Profile() {
 
   const [errors, setErrors] = useState({});
 
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const auth = getAuth();
+      const user = auth.currentUser;
+  
+      if (!user) return;
+  
+      try {
+        const res = await fetch(`http://localhost:3001/api/profile/${user.uid}`);
+        if (!res.ok) {
+          console.warn('No profile found for user:', user.uid);
+          return;
+        }
+  
+        const profile = await res.json();
+  
+        setForm({
+          fullName: profile.name || '',
+          address1: profile.address || '',
+          address2: profile.address2 || '',
+          city: profile.city || '',
+          state: profile.state || '',
+          zip: profile.zip || '',
+          skills: profile.skills || [],
+          preferences: profile.preferences || '',
+          availability: profile.availability?.map(d => new Date(d)) || [],
+        });
+      } catch (err) {
+        console.error('Failed to load profile:', err);
+      }
+    };
+  
+    fetchProfile();
+  }, []);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm({ ...form, [name]: value });
@@ -74,14 +111,52 @@ function Profile() {
     return newErrors;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const validationErrors = validate();
     setErrors(validationErrors);
-    if (Object.keys(validationErrors).length === 0) {
-    console.log('Profile submitted:', form);
-    localStorage.setItem('isProfileComplete', 'true');
-    navigate('/volunteer-dashboard');
+  
+    if (Object.keys(validationErrors).length > 0) return;
+  
+    const auth = getAuth();
+    const user = auth.currentUser;
+  
+    if (!user) {
+      alert('User not authenticated');
+      return;
+    }
+  
+    const profileData = {
+      uid: user.uid,
+      role: 'volunteer',
+      name: form.fullName,
+      address: form.address1,
+      address2: form.address2,
+      city: form.city,
+      state: form.state,
+      zip: form.zip,
+      skills: form.skills,
+      preferences: form.preferences,
+      availability: form.availability,
+    };
+  
+    try {
+      const res = await fetch('http://localhost:3001/api/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profileData),
+      });
+  
+      if (res.ok) {
+        localStorage.setItem('isProfileComplete', 'true');
+        navigate('/volunteer-dashboard');
+      } else {
+        const result = await res.json();
+        alert('Failed to save profile: ' + (result.message || 'Unknown error'));
+      }
+    } catch (err) {
+      console.error('Error saving profile:', err);
+      alert('Something went wrong. Please try again.');
     }
   };
 

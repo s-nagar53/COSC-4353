@@ -2,6 +2,7 @@ require('dotenv').config(); // Load variables from .env
 const admin = require('firebase-admin');
 const express = require('express');
 const cors = require('cors');
+const { profiles } = require('./data/memoryStore');
 
 console.log('🔧 Starting backend...');
 
@@ -28,6 +29,11 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 app.use(express.json());
+
+// Routes
+const profileRoutes = require('./routes/profileRoutes');
+app.use('/api/profile', profileRoutes);
+
 
 // Assign role
 app.post('/set-role', async (req, res) => {
