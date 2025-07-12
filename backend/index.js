@@ -1,24 +1,25 @@
+require('dotenv').config(); // Load variables from .env
+const admin = require('firebase-admin');
+const express = require('express');
+const cors = require('cors');
 
 console.log('🔧 Starting backend...');
 
-const express = require('express');
-const admin = require('firebase-admin');
-const cors = require('cors');
-const app = express();
-
-
-// Load service account key
+// Load service account key from path in .env
 try {
-  const serviceAccount = require('./serviceAccountKey.json');
+  const serviceAccount = require(process.env.GOOGLE_APPLICATION_CREDENTIALS);
 
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
   });
 
+  console.log('✅ Firebase Admin initialized');
 } catch (err) {
   console.error('❌ Error loading service account:', err);
   process.exit(1);
 }
+
+const app = express();
 
 // Middleware
 app.use(cors({
@@ -27,7 +28,6 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 app.use(express.json());
-
 
 // Assign role
 app.post('/set-role', async (req, res) => {
