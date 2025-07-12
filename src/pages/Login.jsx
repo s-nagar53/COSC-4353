@@ -1,6 +1,9 @@
 import './Login.css';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom'; 
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../firebase';
+
 
 function Login() {
   const [email, setEmail] = useState('');
@@ -8,23 +11,34 @@ function Login() {
   const [error, setError] = useState('');
   const navigate = useNavigate(); 
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-
+  
     if (!email || !password) {
       setError('Email and password are required.');
-    } else {
-      setError('');
-      console.log('Logging in with:', { email, password });
-
-      const isProfileComplete = localStorage.getItem('isProfileComplete');
-      if (isProfileComplete === 'true') {
-        navigate('/volunteer-dashboard'); // Redirect if profile is already completed
+      return;
+    }
+  
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+  
+      const tokenResult = await user.getIdTokenResult();
+      const role = tokenResult.claims.role;
+  
+      if (role === 'admin') {
+        navigate('/admin-dashboard');
+      } else if (role === 'volunteer') {
+        const isProfileComplete = localStorage.getItem('isProfileComplete');
+        navigate(isProfileComplete === 'true' ? '/volunteer-dashboard' : '/profile');
       } else {
-        navigate('/profile'); // Redirect to profile page for first-time users
+        setError('No role assigned. Contact support.');
       }
+    } catch (err) {
+      setError(err.message);
     }
   };
+  
 
   return (
     <div className="page-wrapper">

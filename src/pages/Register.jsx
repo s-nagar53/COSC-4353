@@ -1,6 +1,9 @@
 import './Login.css';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../firebase';
+
 
 function Register() {
   const [name, setName] = useState('');
@@ -12,25 +15,55 @@ function Register() {
   const navigate = useNavigate();
   const [isAdmin, setIsAdmin] = useState(false);
 
-  const handleRegister = (e) => {
+  const handleRegister = async (e) => {
     e.preventDefault();
-
+  
     if (!email || !password) {
       setError('Email and password are required.');
       setSuccess('');
-    } else if (password !== confirm) {
+      return;
+    }
+  
+    if (password !== confirm) {
       setError('Passwords do not match.');
       setSuccess('');
-    } else {
-      setError('');
-      localStorage.setItem('isProfileComplete', 'false');
-      setSuccess('Registration successful! Redirecting to login...');
-      console.log('Registering:', { name, email, password });
+      return;
+    }
+  
+    try {
+      // 1. Register user with Firebase
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+  
+      // 2. Assign role via backend
+      const role = isAdmin ? 'admin' : 'volunteer';
+      console.log('Assigning role:', role, 'for UID:', user.uid);
 
-      // Simulate delay before redirecting to login page
+      const idToken = await user.getIdToken();
+
+    await fetch('/api/set-role', {
+      method: 'POST',
+      headers: {
+    'Content-Type': 'application/json',
+      Authorization: `Bearer ${idToken}`,
+      },
+      body: JSON.stringify({ role }),
+    });
+  
+      // 3. Set profile completion status and redirect
+      localStorage.setItem('isProfileComplete', 'false');
+      setSuccess(
+        `Registration successful! Redirecting to ${isAdmin ? 'Admin Profile' : 'Login'}...`
+      );
+      setError('');
+  
       setTimeout(() => {
         navigate(isAdmin ? '/admin-profile' : '/login');
+
       }, 2000);
+    } catch (error) {
+      setError(error.message);
+      setSuccess('');
     }
   };
 
