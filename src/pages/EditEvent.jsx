@@ -4,6 +4,8 @@ import './Profile.css';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import Select from 'react-select';
+import { auth } from '../firebase'; // Adjust path to your firebase config
+import { onAuthStateChanged } from 'firebase/auth';
 
 const Urgency_LVL = [
   { code: '1', name: 'Low' },
@@ -37,32 +39,58 @@ const SKILL_OPTIONS = [
     { value: 'Elderly Care / Companionship', label: 'Elderly Care / Companionship' },
 ];
 
-// Helper function to get event by ID
-const getEventById = (id) => {
-  const events = JSON.parse(localStorage.getItem('events') || '[]');
-  return events.find(event => event.id === id);
+// Helper function to get event by eid from backend
+const getEventById = async (eid, userToken) => {
+  try {
+    const response = await fetch(`http://localhost:3001/api/event/${eid}`, {
+      headers: {
+        'Authorization': `Bearer ${userToken}`
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error('Event not found');
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching event:', error);
+    throw error;
+  }
 };
 
-// Helper function to update event
-const updateEvent = (eventId, updatedEventData) => {
-  const events = JSON.parse(localStorage.getItem('events') || '[]');
-  const eventIndex = events.findIndex(event => event.id === eventId);
-  
-  if (eventIndex !== -1) {
-    events[eventIndex] = {
-      ...events[eventIndex],
-      ...updatedEventData,
-      updatedAt: new Date().toISOString()
-    };
-    localStorage.setItem('events', JSON.stringify(events));
-    return events[eventIndex];
+// Helper function to update event in backend
+const updateEvent = async (eventData, userToken) => {
+  try {
+    const response = await fetch('http://localhost:3001/api/event', {
+      method: 'POST', // Your backend uses POST for both create and update
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${userToken}`
+      },
+      body: JSON.stringify(eventData)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to update event');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error updating event:', error);
+    throw error;
   }
-  return null;
 };
 
 function EditEvent() {
   const navigate = useNavigate();
-  const { id } = useParams();
+  const { eid } = useParams(); // Get event ID from URL
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [userToken, setUserToken] = useState(null);
+  const [userRole, setUserRole] = useState(null);
+  const [originalEvent, setOriginalEvent] = useState(null);
   const [form, setForm] = useState({
     eventName: '',
     eventDescription: '',
@@ -75,34 +103,99 @@ function EditEvent() {
     urgency: '',
     availability: [],
   });
-  const [errors, setErrors] = useState({});
-  const [loading, setLoading] = useState(true);
-  const [eventNotFound, setEventNotFound] = useState(false);
 
+  const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [fetchError, setFetchError] = useState(null);
+
+  // Listen for authentication state changes
   useEffect(() => {
-    const event = getEventById(id);
-    if (event) {
-      // Convert stored event data back to form format
-      const availability = event.availabilityDates?.map(dateObj => new Date(dateObj.date)) || 
-                          event.availability?.map(date => new Date(date)) || [];
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
       
-      setForm({
-        eventName: event.eventName || '',
-        eventDescription: event.eventDescription || '',
-        address1: event.address1 || '',
-        address2: event.address2 || '',
-        city: event.city || '',
-        state: event.state || '',
-        zip: event.zip || '',
-        skills: event.skills || [],
-        urgency: event.urgency || '',
-        availability: availability,
-      });
-    } else {
-      setEventNotFound(true);
-    }
-    setLoading(false);
-  }, [id]);
+      if (!currentUser) {
+        navigate('/login');
+      }
+    });
+
+    return () => unsubscribe();
+  }, [navigate]);
+
+  // Get user token and role when user changes
+  useEffect(() => {
+    const getTokenAndRole = async () => {
+      if (user) {
+        try {
+          const token = await user.getIdToken();
+          setUserToken(token);
+          
+          // Get user role from token claims
+          const tokenResult = await user.getIdTokenResult();
+          const role = tokenResult.claims.role;
+          setUserRole(role);
+          
+          console.log('User role:', role);
+        } catch (error) {
+          console.error('Error getting token:', error);
+        }
+      }
+    };
+
+    getTokenAndRole();
+  }, [user]);
+
+  // Fetch event data when token and eid are available
+  useEffect(() => {
+    const fetchEvent = async () => {
+      if (userToken && eid) {
+        try {
+          setLoading(true);
+          const eventData = await getEventById(eid, userToken);
+          setOriginalEvent(eventData);
+          
+          // Parse address back into address1 and address2
+          const addressParts = eventData.address ? eventData.address.split(' ') : [];
+          let address1 = '';
+          let address2 = '';
+          
+          if (addressParts.length > 0) {
+            // Simple logic: assume last part might be address2 if it looks like apt/suite
+            const lastPart = addressParts[addressParts.length - 1];
+            if (lastPart.toLowerCase().includes('apt') || lastPart.toLowerCase().includes('suite') || 
+                lastPart.toLowerCase().includes('#') || /^\d+[a-zA-Z]?$/.test(lastPart)) {
+              address2 = lastPart;
+              address1 = addressParts.slice(0, -1).join(' ');
+            } else {
+              address1 = eventData.address;
+            }
+          }
+          
+          // Populate form with existing data
+          setForm({
+            eventName: eventData.eventname || '',
+            eventDescription: eventData.eventdescription || '',
+            address1: address1,
+            address2: address2,
+            city: eventData.city || '',
+            state: eventData.state || '',
+            zip: eventData.zip || '',
+            skills: eventData.skills || [],
+            urgency: eventData.urgency || '',
+            availability: eventData.availability ? eventData.availability.map(date => new Date(date)) : [],
+          });
+          
+          setFetchError(null);
+        } catch (error) {
+          console.error('Error loading event:', error);
+          setFetchError('Failed to load event data');
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchEvent();
+  }, [userToken, eid]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -132,69 +225,96 @@ function EditEvent() {
     return newErrors;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const validationErrors = validate();
     setErrors(validationErrors);
     
-    if (Object.keys(validationErrors).length === 0) {
-      // Process the form data before updating
-      const processedFormData = {
-        ...form,
-        // Convert urgency code to name for better display
-        urgencyLevel: Urgency_LVL.find(u => u.code === form.urgency)?.name || form.urgency,
-        // Convert state code to name for better display
-        stateName: US_STATES.find(s => s.code === form.state)?.name || form.state,
-        // Format availability dates
-        availabilityDates: form.availability.map(date => ({
-          date: date.toISOString(),
-          formatted: date.toLocaleDateString()
-        }))
-      };
+    if (Object.keys(validationErrors).length === 0 && user && userToken && originalEvent) {
+      setIsSubmitting(true);
+      
+      try {
+        // Map form data to backend expected format
+        const eventData = {
+          eid: originalEvent.eid, // Keep original eid
+          uid: originalEvent.uid, // Keep original uid
+          role: userRole,
+          eventname: form.eventName,
+          eventdescription: form.eventDescription,
+          address: form.address1 + (form.address2 ? ` ${form.address2}` : ''),
+          city: form.city,
+          state: form.state,
+          zip: form.zip,
+          skills: form.skills,
+          urgency: form.urgency,
+          availability: form.availability.map(date => date.toISOString()),
+        };
 
-      // Update the event
-      const updatedEvent = updateEvent(id, processedFormData);
-      if (updatedEvent) {
-        console.log('Event updated:', updatedEvent);
+        console.log('Updating event data:', eventData);
+
+        // Update in backend
+        const result = await updateEvent(eventData, userToken);
+        console.log('Event updated successfully:', result);
+        
         // Navigate back to manage events page
         navigate('/manage-event');
-      } else {
-        alert('Failed to update event. Please try again.');
+        
+      } catch (error) {
+        console.error('Failed to update event:', error);
+        setErrors({ submit: error.message || 'Failed to update event. Please try again.' });
+      } finally {
+        setIsSubmitting(false);
       }
     }
   };
 
-  const handleCancel = () => {
-    navigate('/manage-event');
-  };
-
-  if (loading) {
+  // Show loading while authenticating or fetching data
+  if (loading || !user) {
     return (
       <div className="page-wrapper profile-scroll">
         <div className="profile-container">
-          <h2>Loading...</h2>
+          <p>Loading...</p>
         </div>
       </div>
     );
   }
 
-  if (eventNotFound) {
+  // Show error if there's an issue fetching the event
+  if (fetchError) {
     return (
       <div className="page-wrapper profile-scroll">
         <div className="profile-container">
-          <h2>Event Not Found</h2>
-          <p>The event you're trying to edit doesn't exist or may have been deleted.</p>
-          <div className="form-group">
-            <button 
-              onClick={() => navigate('/manage-event')}
-            >
-              Back to Events
-            </button>
-            <button 
-              onClick={() => navigate('/admin-dashboard')}
-            >
-              Back to Dashboard
-            </button>
+          <div style={{ textAlign: 'center' }}>
+            <h2>Error Loading Event</h2>
+            <p>{fetchError}</p>
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginTop: '1rem' }}>
+              <button 
+                onClick={() => navigate('/manage-event')}
+                style={{ 
+                  padding: '0.5rem 1rem',
+                  backgroundColor: '#6c757d',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer'
+                }}
+              >
+                Back to Events
+              </button>
+              <button 
+                onClick={() => window.location.reload()}
+                style={{ 
+                  padding: '0.5rem 1rem',
+                  backgroundColor: '#357189',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer'
+                }}
+              >
+                Retry
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -204,9 +324,13 @@ function EditEvent() {
   return (
     <div className="page-wrapper profile-scroll">
       <div className="profile-container">
-        <div className="form-group">
-          <h2>Edit Event</h2>
-        </div>
+        <h2>Edit Event</h2>
+        
+        {errors.submit && (
+          <div className="form-error" style={{ marginBottom: '1rem', padding: '0.5rem', backgroundColor: '#fee', borderRadius: '4px' }}>
+            {errors.submit}
+          </div>
+        )}
         
         <form onSubmit={handleSubmit}>
           <div className="form-group">
@@ -218,6 +342,7 @@ function EditEvent() {
               maxLength="50"
               value={form.eventName}
               onChange={handleChange}
+              disabled={isSubmitting}
             />
             {errors.eventName && <p className="form-error">{errors.eventName}</p>}
           </div>
@@ -231,6 +356,7 @@ function EditEvent() {
               value={form.eventDescription}
               onChange={handleChange}
               rows={3}
+              disabled={isSubmitting}
             />
           </div>
 
@@ -243,6 +369,7 @@ function EditEvent() {
               maxLength="100"
               value={form.address1}
               onChange={handleChange}
+              disabled={isSubmitting}
             />
             {errors.address1 && <p className="form-error">{errors.address1}</p>}
           </div>
@@ -256,6 +383,7 @@ function EditEvent() {
               maxLength="100"
               value={form.address2}
               onChange={handleChange}
+              disabled={isSubmitting}
             />
           </div>
 
@@ -269,6 +397,7 @@ function EditEvent() {
                 maxLength="100"
                 value={form.city}
                 onChange={handleChange}
+                disabled={isSubmitting}
               />
               {errors.city && <p className="form-error">{errors.city}</p>}
             </div>
@@ -280,6 +409,7 @@ function EditEvent() {
                 name="state"
                 value={form.state}
                 onChange={handleChange}
+                disabled={isSubmitting}
               >
                 <option value="">Select State</option>
                 {US_STATES.map((s) => (
@@ -301,6 +431,7 @@ function EditEvent() {
               maxLength="9"
               value={form.zip}
               onChange={handleChange}
+              disabled={isSubmitting}
             />
             {errors.zip && <p className="form-error">{errors.zip}</p>}
           </div>
@@ -321,6 +452,7 @@ function EditEvent() {
                   skills: selectedOptions ? selectedOptions.map((opt) => opt.value) : [],
                 })
               }
+              isDisabled={isSubmitting}
             />
             {errors.skills && <p className="form-error">{errors.skills}</p>}
           </div>
@@ -332,6 +464,7 @@ function EditEvent() {
                 name="urgency"
                 value={form.urgency}
                 onChange={handleChange}
+                disabled={isSubmitting}
               >
                 <option value="">Select Urgency Level</option>
                 {Urgency_LVL.map((s) => (
@@ -348,8 +481,9 @@ function EditEvent() {
             <DatePicker
               selected={null}
               onChange={handleDateChange}
-              placeholderText="Click to set dates"
+              placeholderText="Click to add more dates"
               className="date-picker"
+              disabled={isSubmitting}
             />
             {form.availability.length > 0 && (
               <ul className="selected-dates">
@@ -364,6 +498,7 @@ function EditEvent() {
                           availability: form.availability.filter((_, index) => index !== i),
                         })
                       }
+                      disabled={isSubmitting}
                     >
                       ✕
                     </button>
@@ -374,17 +509,25 @@ function EditEvent() {
             {errors.availability && <p className="form-error">{errors.availability}</p>}
           </div>
 
-          <div className="inline-group">
-            <button 
-              type="submit"
-            >
-              Update Event
+          <div style={{ display: 'flex', gap: '1rem' }}>
+            <button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'Updating Event...' : 'Update Event'}
             </button>
-            <button 
-              type="button"
-              onClick={handleCancel}
-            >
-              Cancel
+            <button
+                type="button"
+                onClick={() => navigate('/manage-event')}
+                disabled={isSubmitting}
+                style={{ 
+                  padding: '0.5rem 1rem',
+                  backgroundColor: '#6c757d',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                  opacity: isSubmitting ? 0.6 : 1
+                }}
+              >
+                Cancel
             </button>
           </div>
         </form>

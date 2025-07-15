@@ -25,7 +25,7 @@ function App() {
         <Route path="/admin-profile" element={<AdminProfile />} />
         <Route path="/create-event" element={<CreateEvent />} />
         <Route path="/manage-event" element={<ManageEvent />} />
-        <Route path="/edit-event/:id" element={<EditEvent />} />
+        <Route path="/edit-event/:eid" element={<EditEvent />} />
         <Route path="/volunteer-matching" element={<VolunteerMatchingForm />} />
         <Route path="/notification" element={<NotificationPage />} />
         <Route path="/volunteer-history" element={<VolunteerHistoryPage />} />

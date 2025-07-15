@@ -1,9 +1,11 @@
 import { useNavigate } from 'react-router-dom';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './Profile.css';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import Select from 'react-select';
+import { auth } from '../firebase'; // Adjust path to your firebase config
+import { onAuthStateChanged } from 'firebase/auth';
 
 const Urgency_LVL = [
   { code: '1', name: 'Low' },
@@ -37,23 +39,41 @@ const SKILL_OPTIONS = [
     { value: 'Elderly Care / Companionship', label: 'Elderly Care / Companionship' },
 ];
 
-// Helper function to save events
-const saveEvent = (eventData) => {
-  const existingEvents = JSON.parse(localStorage.getItem('events') || '[]');
-  const eventWithId = {
-    ...eventData,
-    id: Date.now().toString(), // Simple ID generation
-    createdAt: new Date().toISOString(),
-    status: 'active'
-  };
-  
-  existingEvents.push(eventWithId);
-  localStorage.setItem('events', JSON.stringify(existingEvents));
-  return eventWithId;
+// Helper function to generate unique event ID
+const generateEventId = () => {
+  return 'event_' + Date.now().toString(36) + Math.random().toString(36).substr(2);
+};
+
+// Helper function to save events to backend
+const saveEvent = async (eventData, userToken) => {
+  try {
+    const response = await fetch('http://localhost:3001/api/event', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${userToken}`
+      },
+      body: JSON.stringify(eventData)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to save event');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error saving event:', error);
+    throw error;
+  }
 };
 
 function CreateEvent() {
   const navigate = useNavigate();
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [userToken, setUserToken] = useState(null);
+  const [userRole, setUserRole] = useState(null);
   const [form, setForm] = useState({
     eventName: '',
     eventDescription: '',
@@ -68,6 +88,44 @@ function CreateEvent() {
   });
 
   const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Listen for authentication state changes
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setLoading(false);
+      
+      if (!currentUser) {
+        navigate('/login');
+      }
+    });
+
+    return () => unsubscribe();
+  }, [navigate]);
+
+  // Get user token and role when user changes
+  useEffect(() => {
+    const getTokenAndRole = async () => {
+      if (user) {
+        try {
+          const token = await user.getIdToken();
+          setUserToken(token);
+          
+          // Get user role from token claims
+          const tokenResult = await user.getIdTokenResult();
+          const role = tokenResult.claims.role;
+          setUserRole(role);
+          
+          console.log('User role:', role);
+        } catch (error) {
+          console.error('Error getting token:', error);
+        }
+      }
+    };
+
+    getTokenAndRole();
+  }, [user]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -97,43 +155,83 @@ function CreateEvent() {
     return newErrors;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const validationErrors = validate();
     setErrors(validationErrors);
     
-    if (Object.keys(validationErrors).length === 0) {
-      // Process the form data before saving
-      const processedFormData = {
-        ...form,
-        // Convert urgency code to name for better display
-        urgencyLevel: Urgency_LVL.find(u => u.code === form.urgency)?.name || form.urgency,
-        // Convert state code to name for better display
-        stateName: US_STATES.find(s => s.code === form.state)?.name || form.state,
-        // Format availability dates
-        availabilityDates: form.availability.map(date => ({
-          date: date.toISOString(),
-          formatted: date.toLocaleDateString()
-        }))
-      };
+    if (Object.keys(validationErrors).length === 0 && user && userToken) {
+      setIsSubmitting(true);
+      
+      try {
+        // Generate unique event ID
+        const eventId = generateEventId();
+        
+        // Map form data to backend expected format
+        const eventData = {
+          eid: eventId,
+          uid: user.uid,
+          role: userRole,
+          eventname: form.eventName,
+          eventdescription: form.eventDescription,
+          address: form.address1 + (form.address2 ? ` ${form.address2}` : ''),
+          city: form.city,
+          state: form.state,
+          zip: form.zip,
+          skills: form.skills,
+          urgency: form.urgency,
+          availability: form.availability.map(date => date.toISOString()),
+        };
 
-      // Save the event
-      const savedEvent = saveEvent(processedFormData);
-      console.log('Event saved:', savedEvent);
-      
-      // Set completion flag and navigate
-      localStorage.setItem('isEventComplete', 'true');
-      localStorage.setItem('lastCreatedEventId', savedEvent.id);
-      
-      // Navigate to manage events page to see the created event
-      navigate('/manage-event');
+        console.log('Submitting event data:', eventData);
+
+        // Save to backend
+        const result = await saveEvent(eventData, userToken);
+        console.log('Event saved successfully:', result);
+        
+        // Set completion flag in localStorage for UI feedback
+        localStorage.setItem('isEventComplete', 'true');
+        localStorage.setItem('lastCreatedEventId', eventId);
+        
+        // Navigate to manage events page
+        navigate('/manage-event');
+        
+      } catch (error) {
+        console.error('Failed to save event:', error);
+        setErrors({ submit: error.message || 'Failed to save event. Please try again.' });
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
+
+  // Show loading while authenticating
+  if (loading) {
+    return (
+      <div className="page-wrapper profile-scroll">
+        <div className="profile-container">
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render if no user (will redirect)
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className="page-wrapper profile-scroll">
       <div className="profile-container">
         <h2>Create Event</h2>
+        
+        {errors.submit && (
+          <div className="form-error" style={{ marginBottom: '1rem', padding: '0.5rem', backgroundColor: '#fee', borderRadius: '4px' }}>
+            {errors.submit}
+          </div>
+        )}
+        
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="eventName">Event Name</label>
@@ -144,6 +242,7 @@ function CreateEvent() {
               maxLength="50"
               value={form.eventName}
               onChange={handleChange}
+              disabled={isSubmitting}
             />
             {errors.eventName && <p className="form-error">{errors.eventName}</p>}
           </div>
@@ -157,6 +256,7 @@ function CreateEvent() {
               value={form.eventDescription}
               onChange={handleChange}
               rows={3}
+              disabled={isSubmitting}
             />
           </div>
 
@@ -169,6 +269,7 @@ function CreateEvent() {
               maxLength="100"
               value={form.address1}
               onChange={handleChange}
+              disabled={isSubmitting}
             />
             {errors.address1 && <p className="form-error">{errors.address1}</p>}
           </div>
@@ -182,6 +283,7 @@ function CreateEvent() {
               maxLength="100"
               value={form.address2}
               onChange={handleChange}
+              disabled={isSubmitting}
             />
           </div>
 
@@ -195,6 +297,7 @@ function CreateEvent() {
                 maxLength="100"
                 value={form.city}
                 onChange={handleChange}
+                disabled={isSubmitting}
               />
               {errors.city && <p className="form-error">{errors.city}</p>}
             </div>
@@ -206,6 +309,7 @@ function CreateEvent() {
                 name="state"
                 value={form.state}
                 onChange={handleChange}
+                disabled={isSubmitting}
               >
                 <option value="">Select State</option>
                 {US_STATES.map((s) => (
@@ -227,6 +331,7 @@ function CreateEvent() {
               maxLength="9"
               value={form.zip}
               onChange={handleChange}
+              disabled={isSubmitting}
             />
             {errors.zip && <p className="form-error">{errors.zip}</p>}
           </div>
@@ -247,6 +352,7 @@ function CreateEvent() {
                   skills: selectedOptions ? selectedOptions.map((opt) => opt.value) : [],
                 })
               }
+              isDisabled={isSubmitting}
             />
             {errors.skills && <p className="form-error">{errors.skills}</p>}
           </div>
@@ -258,6 +364,7 @@ function CreateEvent() {
                 name="urgency"
                 value={form.urgency}
                 onChange={handleChange}
+                disabled={isSubmitting}
               >
                 <option value="">Select Urgency Level</option>
                 {Urgency_LVL.map((s) => (
@@ -276,6 +383,7 @@ function CreateEvent() {
               onChange={handleDateChange}
               placeholderText="Click to set dates"
               className="date-picker"
+              disabled={isSubmitting}
             />
             {form.availability.length > 0 && (
               <ul className="selected-dates">
@@ -290,6 +398,7 @@ function CreateEvent() {
                           availability: form.availability.filter((_, index) => index !== i),
                         })
                       }
+                      disabled={isSubmitting}
                     >
                       ✕
                     </button>
@@ -300,18 +409,21 @@ function CreateEvent() {
             {errors.availability && <p className="form-error">{errors.availability}</p>}
           </div>
 
-          <button type="submit">
-            Save Event
+          <button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? 'Saving Event...' : 'Save Event'}
           </button>
           <button
+              type="button"
               onClick={() => navigate('/admin-dashboard')}
+              disabled={isSubmitting}
               style={{ 
                 padding: '0.5rem 1rem',
                 backgroundColor: '#6c757d',
                 color: 'white',
                 border: 'none',
                 borderRadius: '4px',
-                cursor: 'pointer'
+                cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                opacity: isSubmitting ? 0.6 : 1
               }}
             >
               Back to Dashboard
