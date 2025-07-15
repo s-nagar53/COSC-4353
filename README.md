@@ -7,5 +7,7 @@ Zahra Bhattacharya,
 Ayaan Durani
 Crystal Tmtran
 
-please view testing branch for code
+Assignment 2 (Front-End): Please view testing branch for code
+Assignment 3 (Backend): Please view backend-testing branch for code
+
 
