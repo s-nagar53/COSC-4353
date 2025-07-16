@@ -37,12 +37,12 @@ const profiles = {
             uid: '4axjSd7bv9OASxjREr7uVRr2HvJ3',
             role: 'volunteer',
             name: 'John Smith',
-            address: '123 Main st',
+            address: '399 Hamilton Street',
             city: 'Houston',
             state: 'TX',
-            zip: '72001',
+            zip: '77002',
             skills: ["Teaching / Tutoring", "Food Preparation / Serving", "Event Setup / Cleanup"],
-            availability: [new Date(Date.UTC(2025, 8, 1)).toISOString()] // September 1, 2025
+            availability: [new Date(Date.UTC(2025, 9, 1)).toISOString()] // September 1, 2025
           },
           // New volunteers
           {
@@ -72,10 +72,10 @@ const profiles = {
             uid: 'BiDMZnGixqQ8Cao6DuG8l59v90T2',
             role: 'volunteer',
             name: 'Sarah Johnson',
-            address: '321 Maple Drive',
-            city: 'Los Angeles',
-            state: 'CA',
-            zip: '90026',
+            address: '101 Cougar Place',
+            city: 'Houston',
+            state: 'TX',
+            zip: '77066',
             skills: ["Event Setup / Cleanup", "First Aid / CPR"],
             preferences: 'Flexible schedule',
             availability: [new Date(Date.UTC(2025, 11, 1)).toISOString()] // December 1, 2025
@@ -84,10 +84,10 @@ const profiles = {
             uid: 'CLQvkdh3vhbjASRJ5jfj7Iluzsh2',
             role: 'volunteer',
             name: 'Robert Chen',
-            address: '654 Elm Street',
-            city: 'Houston',
-            state: 'TX',
-            zip: '77008',
+            address: '457 Hollywood Street',
+            city: 'Los Angeles',
+            state: 'CA',
+            zip: '90026',
             skills: ["Driving / Transportation", "Technical Support / IT Help"],
             availability: [new Date(Date.UTC(2025, 6, 20)).toISOString()] // July 20, 2025
         }
