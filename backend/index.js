@@ -4,6 +4,7 @@ const express = require('express');
 const cors = require('cors');
 const { profiles } = require('./data/memoryStore');
 const { events } = require('./data/memoryEvents');
+const volunteerMatchingRoutes = require('./routes/volunteerMatchingRoutes');
 
 console.log('🔧 Starting backend...');
 
@@ -53,6 +54,8 @@ app.use('/api/profile', profileRoutes);
 const eventRoutes = require('./routes/eventRoutes');
 app.use('/api/event', eventRoutes);
 
+app.use('/api/matching', volunteerMatchingRoutes);
+
 // Test route to verify backend is working
 app.get('/api/test', (req, res) => {
   res.json({ 
@@ -60,6 +63,24 @@ app.get('/api/test', (req, res) => {
     firebaseAdmin: firebaseAdminInitialized,
     profiles: Object.keys(profiles).length,
     events: events.event ? events.event.length : 0
+  });
+});
+
+// route to check matching data (for debugging)
+app.get('/api/matching-data', (req, res) => {
+  res.json({
+    volunteers: profiles.volunteers.map(v => ({
+      id: v.uid,
+      name: v.name,
+      city: v.city,
+      skills: v.skills
+    })),
+    events: events.event.map(e => ({
+      id: e.eid,
+      name: e.eventname,
+      city: e.city,
+      skills: e.skills
+    }))
   });
 });
 
@@ -98,6 +119,7 @@ app.post('/set-role', async (req, res) => {
 });
 
 const PORT = 3001;
+
 app.listen(PORT, () => {
   console.log(`🚀 Backend running on http://localhost:${PORT}`);
   console.log(`📊 Loaded ${Object.keys(profiles).reduce((total, key) => total + profiles[key].length, 0)} profiles`);
