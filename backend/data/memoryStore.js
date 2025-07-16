@@ -30,7 +30,7 @@ const profiles = {
             zip: '90001',
             skills: ["Event Setup / Cleanup"],
             preferences: 'Weekends only',
-            availability: [new Date(2025, 9, 1).toISOString()]
+            availability: [new Date(Date.UTC(2025, 8, 1)).toISOString()] // September 1, 2025
           },
 
           {
@@ -42,54 +42,54 @@ const profiles = {
             state: 'TX',
             zip: '72001',
             skills: ["Teaching / Tutoring", "Food Preparation / Serving", "Event Setup / Cleanup"],
-            availability: [new Date(2025, 9, 1).toISOString()]
+            availability: [new Date(Date.UTC(2025, 8, 1)).toISOString()] // September 1, 2025
           },
           // New volunteers
           {
-            uid: 'vol_003',
+            uid: 'cp12tNImj0f2YsgdKQ6JmgeXdbJ2',
             role: 'volunteer',
             name: 'Maria Garcia',
             address: '456 Oak Street',
             city: 'Los Angeles',
             state: 'CA',
             zip: '90005',
-            skills: ["Food Preparation / Serving", "Spanish Translation"],
+            skills: ["Food Preparation / Serving", "Translation / Interpretation"],
             preferences: 'Weekday mornings',
-            availability: [new Date(2025, 8, 15).toISOString()]
+            availability: [new Date(Date.UTC(2025, 7, 15)).toISOString()] // August 15, 2025
         },
         {
-            uid: 'vol_004',
+            uid: 'IRNL3zMDkNSkEMN9lKmVvaiLHfE2',
             role: 'volunteer',
             name: 'David Kim',
             address: '789 Pine Road',
             city: 'Houston',
             state: 'TX',
             zip: '77002',
-            skills: ["Teaching / Tutoring", "Computer Skills"],
-            availability: [new Date(2025, 10, 1).toISOString()]
+            skills: ["Teaching / Tutoring", "Childcare / Youth Engagement"],
+            availability: [new Date(Date.UTC(2025, 9, 1)).toISOString()] // October 1, 2025
         },
         {
-            uid: 'vol_005',
+            uid: 'BiDMZnGixqQ8Cao6DuG8l59v90T2',
             role: 'volunteer',
             name: 'Sarah Johnson',
             address: '321 Maple Drive',
             city: 'Los Angeles',
             state: 'CA',
             zip: '90026',
-            skills: ["Event Setup / Cleanup", "First Aid Certified"],
+            skills: ["Event Setup / Cleanup", "First Aid / CPR"],
             preferences: 'Flexible schedule',
-            availability: [new Date(2025, 7, 20).toISOString()]
+            availability: [new Date(Date.UTC(2025, 11, 1)).toISOString()] // December 1, 2025
         },
         {
-            uid: 'vol_006',
+            uid: 'CLQvkdh3vhbjASRJ5jfj7Iluzsh2',
             role: 'volunteer',
             name: 'Robert Chen',
             address: '654 Elm Street',
             city: 'Houston',
             state: 'TX',
             zip: '77008',
-            skills: ["Physical Labor", "Construction Skills"],
-            availability: [new Date(2025, 11, 1).toISOString()]
+            skills: ["Driving / Transportation", "Technical Support / IT Help"],
+            availability: [new Date(Date.UTC(2025, 6, 20)).toISOString()] // July 20, 2025
         }
     ],
   };

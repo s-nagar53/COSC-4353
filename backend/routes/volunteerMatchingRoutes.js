@@ -7,49 +7,20 @@ const { events } = require('../data/memoryEvents');
 // console.log('Total volunteers:', profiles.volunteers.length);
 // console.log('Total events:', events.event.length);
 
-// DATA VALIDATION
-// const testDataIntegrity = () => {
-//     console.log('=== DATA INTEGRITY CHECK ===');
-    
-//     // Check events
-//     console.log('Events count:', events.event.length);
-//     events.event.forEach((event, index) => {
-//       console.log(`Event ${index}:`, {
-//         eid: event.eid,
-//         name: event.eventname,
-//         city: event.city,
-//         skills: event.skills,
-//         hasRequiredFields: !!(event.eid && event.eventname && event.city && event.skills)
-//       });
-//     });
-    
-//     // Check volunteers
-//     console.log('Volunteers count:', profiles.volunteers.length);
-//     profiles.volunteers.forEach((volunteer, index) => {
-//       console.log(`Volunteer ${index}:`, {
-//         uid: volunteer.uid,
-//         name: volunteer.name,
-//         city: volunteer.city,
-//         skills: volunteer.skills,
-//         hasRequiredFields: !!(volunteer.uid && volunteer.name && volunteer.city && volunteer.skills)
-//       });
-//     });
-//   };
-  
-// // Call this function to check your data
-// testDataIntegrity();
-
 // In-memory storage for matches (since no database yet)
 let matches = [];
 let matchIdCounter = 1;
 
-
- // GET /api/matching/events
- // Get all events for the event dropdown
-
+// GET /api/matching/events
+// Get all events for the event dropdown
 router.get('/events', (req, res) => {
   try {
-    const formattedEvents = events.event.map(event => ({
+    // Sort events by urgency (Critical first, Low last)
+    const sortedEvents = [...events.event].sort((a, b) => {
+      return parseInt(b.urgency) - parseInt(a.urgency);
+    });
+
+    const formattedEvents = sortedEvents.map(event => ({
       id: event.eid,
       name: event.eventname,
       city: event.city,
@@ -58,7 +29,9 @@ router.get('/events', (req, res) => {
       zip: event.zip,
       requiredSkills: event.skills,
       urgency: event.urgency,
-      date: event.availability[0] ? new Date(event.availability[0]).toISOString().split('T')[0] : 'TBD'
+      urgencyName: getUrgencyName(event.urgency),
+      date: event.availability && event.availability[0] ? new Date(event.availability[0]).toISOString().split('T')[0] : 'TBD',
+      availability: event.availability || []
     }));
 
     res.json({
@@ -75,15 +48,25 @@ router.get('/events', (req, res) => {
   }
 });
 
+// Helper function to get urgency name
+function getUrgencyName(code) {
+  const Urgency_LVL = [
+    { code: '1', name: 'Low' },
+    { code: '2', name: 'Medium' },
+    { code: '3', name: 'High' },
+    { code: '4', name: 'Critical' },
+  ];
+  const baseName = Urgency_LVL.find(lvl => lvl.code === code)?.name || 'Unknown';
+  return `${baseName} Urgency`;
+}
 
- //GET /api/matching/volunteers/:eventId
- // Get volunteers that match the selected event's city and have at least one matching skill
-
+//GET /api/matching/volunteers/:eventId
+// get volunteers that match the selected event's city and have at least one matching skill
 router.get('/volunteers/:eventId', (req, res) => {
   try {
     const { eventId } = req.params;
     
-    // Find the selected event
+    // find the selected event
     const selectedEvent = events.event.find(event => event.eid === eventId);
     
     if (!selectedEvent) {
@@ -93,51 +76,90 @@ router.get('/volunteers/:eventId', (req, res) => {
       });
     }
 
-    // Get existing matches for this event
-    const eventMatches = matches.filter(m => m.eventId === eventId);
-    const matchedVolunteerIds = eventMatches.map(m => m.volunteerId);
+    // Normalize event data
+    const eventCity = selectedEvent.city?.toLowerCase().trim();
+    const eventSkills = selectedEvent.skills?.map(s => s.toLowerCase().trim()) || [];
+    const eventDates = selectedEvent.availability || [];
+    
+    // Get volunteers not already matched to this event
+    const matchedVolunteerIds = matches
+      .filter(m => m.eventId === eventId)
+      .map(m => m.volunteerId);
 
-    // Filter volunteers based on city match and skill overlap
+    // Ensure event has availability array
+    if (!selectedEvent.availability || !Array.isArray(selectedEvent.availability)) {
+      selectedEvent.availability = [];
+    }
+
+    // get all matches to check for date conflicts
+    const allMatches = matches;
+
+    // filter volunteers based on city match and skill overlap
     const matchingVolunteers = profiles.volunteers.filter(volunteer => {
-      // Safety checks
-        if (!volunteer || !volunteer.city || !volunteer.skills || !Array.isArray(volunteer.skills)) {
-            console.log('⚠️ Skipping volunteer with invalid data:', volunteer);
-            return false;
-        }
+      // Safety checks for volunteer data
+      if (!volunteer || !volunteer.city || !volunteer.skills || !Array.isArray(volunteer.skills)) {
+        console.log('⚠️ Skipping volunteer with invalid data:', volunteer);
+        return false;
+      }
 
-        if (!selectedEvent || !selectedEvent.city || !selectedEvent.skills) {
-            console.log('⚠️ Event has missing data:', selectedEvent);
-            return false;
-          }
-        // Skip already matched volunteers
-        if (matchedVolunteerIds.includes(volunteer.uid)) {
-            return false;
-        }
-       // Check if volunteer's city matches event's city
-       const cityMatch = volunteer.city.toLowerCase().trim() === selectedEvent.city.toLowerCase().trim();
+      // Safety checks for event data
+      if (!selectedEvent || !selectedEvent.city || !selectedEvent.skills) {
+        console.log('⚠️ Event has missing data:', selectedEvent);
+        return false;
+      }
+
+      // Skip already matched volunteers
+      if (matchedVolunteerIds.includes(volunteer.uid)) {
+        return false;
+      }
+
+      // check if volunteer's city matches event's city
+      const cityMatch = volunteer.city.toLowerCase().trim() === selectedEvent.city.toLowerCase().trim();
       
-    // Check if volunteer has at least one matching skill
-        const hasMatchingSkill = volunteer.skills.some(skill => 
-            selectedEvent.skills.some(eventSkill => 
-            skill.toLowerCase().trim() === eventSkill.toLowerCase().trim()
-            )
-        );
+      // check if volunteer has at least one matching skill
+      const hasMatchingSkill = volunteer.skills.some(skill => 
+        selectedEvent.skills.some(eventSkill => 
+          skill.toLowerCase().trim() === eventSkill.toLowerCase().trim()
+        )
+      );
+
+      // check availability - ensure volunteer has availability array
+      if (!volunteer.availability || !Array.isArray(volunteer.availability)) {
+        console.log('⚠️ Volunteer has no availability data:', volunteer.name);
+        return false;
+      }
+
+      // check if volunteer is available on any of the event dates
+      const hasAvailability = selectedEvent.availability.length === 0 || 
+        selectedEvent.availability.some(eventDate => {
+          // check if volunteer is already booked on this date
+          const isBooked = allMatches.some(match => 
+            match.volunteerId === volunteer.uid && 
+            match.eventId !== eventId && // Different event
+            match.event && 
+            match.event.availability && 
+            match.event.availability.includes(eventDate)
+          );
+          
+          return !isBooked && volunteer.availability.includes(eventDate);
+        });
         
-      return cityMatch && hasMatchingSkill;
+      return cityMatch && hasMatchingSkill && hasAvailability;
     });
 
-
-    // Format volunteers for the dropdown
+    // format volunteers for the dropdown
     const formattedVolunteers = matchingVolunteers.map(volunteer => ({
       id: volunteer.uid,
       name: volunteer.name,
       city: volunteer.city,
       state: volunteer.state,
       skills: volunteer.skills,
-      availability: volunteer.availability,
+      availability: volunteer.availability || [],
       preferences: volunteer.preferences || 'None specified',
       matchingSkills: volunteer.skills.filter(skill => 
-        selectedEvent.skills.includes(skill)
+        selectedEvent.skills.some(eventSkill => 
+          skill.toLowerCase().trim() === eventSkill.toLowerCase().trim()
+        )
       )
     }));
 
@@ -150,7 +172,8 @@ router.get('/volunteers/:eventId', (req, res) => {
           name: selectedEvent.eventname,
           city: selectedEvent.city,
           state: selectedEvent.state,
-          requiredSkills: selectedEvent.skills
+          requiredSkills: selectedEvent.skills,
+          availability: selectedEvent.availability
         }
       }
     });
@@ -164,10 +187,8 @@ router.get('/volunteers/:eventId', (req, res) => {
   }
 });
 
-
- // POST /api/matching/matches
- // Create a new volunteer-event match
-
+// POST /api/matching/matches
+// Create a new volunteer-event match
 router.post('/matches', (req, res) => {
   try {
     const { volunteerId, eventId } = req.body;
@@ -213,7 +234,9 @@ router.post('/matches', (req, res) => {
     // Validate that volunteer meets event requirements
     const cityMatch = volunteer.city.toLowerCase() === event.city.toLowerCase();
     const hasMatchingSkill = volunteer.skills.some(skill => 
-      event.skills.includes(skill)
+      event.skills.some(eventSkill => 
+        skill.toLowerCase().trim() === eventSkill.toLowerCase().trim()
+      )
     );
 
     if (!cityMatch) {
@@ -230,6 +253,24 @@ router.post('/matches', (req, res) => {
       });
     }
 
+    // Check availability conflicts
+    if (volunteer.availability && event.availability) {
+      const hasConflict = matches.some(match => 
+        match.volunteerId === volunteerId && 
+        match.eventId !== eventId &&
+        match.event && 
+        match.event.availability &&
+        match.event.availability.some(date => event.availability.includes(date))
+      );
+
+      if (hasConflict) {
+        return res.status(400).json({
+          success: false,
+          message: 'Volunteer has conflicting availability with another event'
+        });
+      }
+    }
+
     // Create new match
     const newMatch = {
       id: matchIdCounter++,
@@ -237,9 +278,29 @@ router.post('/matches', (req, res) => {
       eventId,
       volunteerName: volunteer.name,
       eventName: event.eventname,
-      matchedSkills: volunteer.skills.filter(skill => event.skills.includes(skill)),
+      matchedSkills: volunteer.skills.filter(skill => 
+        event.skills.some(eventSkill => 
+          skill.toLowerCase().trim() === eventSkill.toLowerCase().trim()
+        )
+      ),
       createdAt: new Date().toISOString(),
-      status: 'active'
+      status: 'active',
+      volunteer: {
+        id: volunteer.uid,
+        name: volunteer.name,
+        city: volunteer.city,
+        skills: volunteer.skills
+      },
+      event: {
+        id: event.eid,
+        name: event.eventname,
+        city: event.city,
+        urgency: event.urgency,
+        urgencyName: getUrgencyName(event.urgency),
+        availability: event.availability || [],
+        date: event.availability && event.availability[0] ? 
+          new Date(event.availability[0]).toISOString().split('T')[0] : 'TBD'
+      }
     };
 
     matches.push(newMatch);
@@ -259,10 +320,8 @@ router.post('/matches', (req, res) => {
   }
 });
 
-
- // GET /api/matching/matches
- // Get all existing matches
-
+// GET /api/matching/matches
+// Get all existing matches
 router.get('/matches', (req, res) => {
   try {
     // Format matches with full details
@@ -283,7 +342,10 @@ router.get('/matches', (req, res) => {
           name: event?.eventname || match.eventName,
           requiredSkills: event?.skills || [],
           city: event?.city || 'Unknown',
-          date: event?.availability?.[0] ? new Date(event.availability[0]).toISOString().split('T')[0] : 'TBD'
+          urgency: event?.urgency || match.event?.urgency,
+          urgencyName: event ? getUrgencyName(event.urgency) : (match.event?.urgencyName || 'Unknown'),
+          date: event?.availability?.[0] ? new Date(event.availability[0]).toISOString().split('T')[0] : 'TBD',
+          availability: event?.availability || []
         },
         matchedSkills: match.matchedSkills || [],
         createdAt: match.createdAt,
@@ -305,10 +367,8 @@ router.get('/matches', (req, res) => {
   }
 });
 
-
- // DELETE /api/matching/matches/:matchId
- // Delete a specific match
-
+// DELETE /api/matching/matches/:matchId
+// Delete a specific match
 router.delete('/matches/:matchId', (req, res) => {
   try {
     const { matchId } = req.params;
@@ -338,10 +398,8 @@ router.delete('/matches/:matchId', (req, res) => {
   }
 });
 
-
- // GET /api/matching/volunteer-stats/:volunteerId
- // Get volunteer's matching statistics
-
+// GET /api/matching/volunteer-stats/:volunteerId
+// Get volunteer's matching statistics
 router.get('/volunteer-stats/:volunteerId', (req, res) => {
   try {
     const { volunteerId } = req.params;
@@ -362,7 +420,9 @@ router.get('/volunteer-stats/:volunteerId', (req, res) => {
     const potentialMatches = events.event.filter(event => {
       const cityMatch = volunteer.city.toLowerCase() === event.city.toLowerCase();
       const hasMatchingSkill = volunteer.skills.some(skill => 
-        event.skills.includes(skill)
+        event.skills.some(eventSkill => 
+          skill.toLowerCase().trim() === eventSkill.toLowerCase().trim()
+        )
       );
       const notAlreadyMatched = !volunteerMatches.some(m => m.eventId === event.eid);
       
@@ -397,10 +457,8 @@ router.get('/volunteer-stats/:volunteerId', (req, res) => {
   }
 });
 
-
- // GET /api/matching/event-stats/:eventId
- // Get event's matching statistics
-
+// GET /api/matching/event-stats/:eventId
+// Get event's matching statistics
 router.get('/event-stats/:eventId', (req, res) => {
   try {
     const { eventId } = req.params;
@@ -421,7 +479,9 @@ router.get('/event-stats/:eventId', (req, res) => {
     const potentialVolunteers = profiles.volunteers.filter(volunteer => {
       const cityMatch = volunteer.city.toLowerCase() === event.city.toLowerCase();
       const hasMatchingSkill = volunteer.skills.some(skill => 
-        event.skills.includes(skill)
+        event.skills.some(eventSkill => 
+          skill.toLowerCase().trim() === eventSkill.toLowerCase().trim()
+        )
       );
       const notAlreadyMatched = !eventMatches.some(m => m.volunteerId === volunteer.uid);
       

@@ -11,7 +11,7 @@
             zip: '90001',
             skills: ["Event Setup / Cleanup", "Elderly Care / Companionship"],
             urgency: '1',
-            availability: [new Date(2025, 9, 1).toISOString()]
+            availability: [new Date(Date.UTC(2025, 8, 1)).toISOString()] // September 1, 2025
         },
 
         {
@@ -24,7 +24,7 @@
             zip: '77066',
             skills: ["Event Setup / Cleanup"],
             urgency: '3',
-            availability: [new Date(2025, 12, 1).toISOString()]
+            availability: [new Date(Date.UTC(2025, 11, 1)).toISOString()] // December 1, 2025
         },
         // New events
         {
@@ -35,9 +35,9 @@
             city: 'Los Angeles',
             state: 'CA',
             zip: '90005',
-            skills: ["Food Preparation / Serving", "Inventory Management"],
+            skills: ["Food Preparation / Serving", "Fundraising / Donation Drives"],
             urgency: '2',
-            availability: [new Date(2025, 8, 15).toISOString()]
+            availability: [new Date(Date.UTC(2025, 7, 15)).toISOString()] // August 15, 2025
         },
         {
             eid: 'event_004',
@@ -47,9 +47,9 @@
             city: 'Houston',
             state: 'TX',
             zip: '77002',
-            skills: ["Teaching / Tutoring", "Childcare"],
+            skills: ["Teaching / Tutoring", "Childcare / Youth Engagement"],
             urgency: '1',
-            availability: [new Date(2025, 10, 1).toISOString()]
+            availability: [new Date(Date.UTC(2025, 9, 1)).toISOString()] // October 1, 2025
         },
         {
             eid: 'event_005',
@@ -59,12 +59,11 @@
             city: 'Los Angeles',
             state: 'CA',
             zip: '90026',
-            skills: ["Event Setup / Cleanup", "Physical Labor"],
+            skills: ["Event Setup / Cleanup", "Driving / Transportation"],
             urgency: '2',
-            availability: [new Date(2025, 7, 20).toISOString()]
+            availability: [new Date(Date.UTC(2025, 6, 20)).toISOString()] // July 20, 2025
         }
     ]
 };
-  
-  module.exports = { events };
-  
+
+module.exports = { events };

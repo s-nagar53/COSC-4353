@@ -4,6 +4,7 @@ import './Profile.css';
 import Select from 'react-select';
 
 function VolunteerMatchingForm() {
+  
   const navigate = useNavigate();
   
   // state for events and volunteers
@@ -182,16 +183,30 @@ function VolunteerMatchingForm() {
     }
   };
 
+  const urgencyColors = {
+    '1': '#28a745', // Green for Low
+    '2': '#ffc107', // Yellow for Medium
+    '3': '#fd7e14', // Orange for High
+    '4': '#dc3545', // Red for Critical
+  };
+
   // format events for dropdown
   const eventOptions = events.map(event => ({
     value: event.id,
-    label: `${event.name} - ${event.city}, ${event.state} (${event.date})`
+    label: `${event.name} - ${event.city}, ${event.state} (${event.date})`,
+    urgency: event.urgency,
+    urgencyName: event.urgencyName,
   }));
 
   // format volunteers for dropdown
   const volunteerOptions = volunteers.map(volunteer => ({
     value: volunteer.id,
-    label: `${volunteer.name} - ${volunteer.city}, ${volunteer.state} (Skills: ${volunteer.matchingSkills.join(', ')})`
+    label: `${volunteer.name} - ${volunteer.city}, ${volunteer.state} (Skills: ${volunteer.matchingSkills.join(', ')})
+    (Available: ${volunteer.availability ? volunteer.availability.map(date => {
+      const d = new Date(date);
+      // Format as MM/DD/YYYY without time
+      return `${(d.getUTCMonth() + 1).toString().padStart(2, '0')}/${d.getUTCDate().toString().padStart(2, '0')}/${d.getUTCFullYear()}`;
+    }).join(', ') : 'Not specified'})`
   }));
 
   if (isLoading) {
@@ -205,8 +220,8 @@ function VolunteerMatchingForm() {
   }
 
   return (
-    <div className="page-wrapper" style={{ overflow: 'visible' }}> 
-      <div className="profile-container" style={{ overflow: 'visible' }}> 
+    <div className="page-wrapper" > 
+      <div className="profile-container" > 
         <h2>Volunteer Matching</h2>
         <p style={{ color: '#666', marginBottom: '1rem' }}>
           First select an event, then choose from volunteers who live in the same city and have matching skills.
@@ -235,8 +250,31 @@ function VolunteerMatchingForm() {
                 control: (base) => ({
                   ...base,
                   borderRadius: '4px'
+                }),
+                option: (base, { data }) => ({
+                  ...base,
+                  color: urgencyColors[data.urgency] || 'inherit',
+                  fontWeight: data.urgency >= '3' ? 'bold' : 'normal'
+                }),
+                singleValue: (base, { data }) => ({
+                  ...base,
+                  color: urgencyColors[data?.urgency] || 'inherit',
+                  fontWeight: data?.urgency >= '3' ? 'bold' : 'normal'
                 })
               }}
+              formatOptionLabel={(option) => (
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <span style={{ 
+                    display: 'inline-block',
+                    width: '12px',
+                    height: '12px',
+                    borderRadius: '50%',
+                    backgroundColor: urgencyColors[option.urgency],
+                    marginRight: '8px'
+                  }} />
+                  {option.label}
+                </div>
+              )}
             />
             {errors.event && <p className="form-error">{errors.event}</p>}
           </div>
@@ -285,15 +323,29 @@ function VolunteerMatchingForm() {
               margin: '1rem 0',
               border: '1px solid #dee2e6'
             }}>
-              <h4 style={{ color: 'black', marginBottom: '0.5rem' }}>Matching Criteria:</h4>
+              <h4 style={{ color: 'black', marginBottom: '0.5rem' }}>Matching Criteria</h4>
               <p style={{ color: 'black', margin: '0.25rem 0' }}>
                 <strong>Event:</strong> {events.find(e => e.id === selectedEvent.value)?.name}
+                <span style={{ 
+                  color: urgencyColors[events.find(e => e.id === selectedEvent.value)?.urgency],
+                  fontWeight: 'bold',
+                  marginLeft: '0.5rem'
+                }}>
+                  [{events.find(e => e.id === selectedEvent.value)?.urgencyName}]
+                </span>
               </p>
               <p style={{ color: 'black', margin: '0.25rem 0' }}>
                 <strong>Location:</strong> {events.find(e => e.id === selectedEvent.value)?.city}, {events.find(e => e.id === selectedEvent.value)?.state}
               </p>
               <p style={{ color: 'black', margin: '0.25rem 0' }}>
                 <strong>Required Skills:</strong> {events.find(e => e.id === selectedEvent.value)?.requiredSkills.join(', ')}
+              </p>
+              <p style={{ color: 'black', margin: '0.25rem 0' }}>
+                <strong>Event Date(s):</strong> {
+        events.find(e => e.id === selectedEvent.value)?.availability?.map(date => {
+          const d = new Date(date);
+          return `${(d.getUTCMonth() + 1).toString().padStart(2, '0')}/${d.getUTCDate().toString().padStart(2, '0')}/${d.getUTCFullYear()}`;
+        }).join(', ') || 'Not specified'}
               </p>
               <p style={{ color: 'black', margin: '0.25rem 0' }}>
                 <strong>Matching Volunteers Found:</strong> {volunteers.length}
@@ -326,7 +378,8 @@ function VolunteerMatchingForm() {
                   padding: '1rem', 
                   marginBottom: '0.5rem', 
                   borderRadius: '4px',
-                  border: '1px solid #dee2e6'
+                  border: '1px solid #dee2e6',
+                  borderLeft: `4px solid ${urgencyColors[match.event.urgency] || '#dee2e6'}`
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div style={{ flex: 1 }}>
@@ -337,6 +390,16 @@ function VolunteerMatchingForm() {
                       </div>
                       
                       <div style={{ fontSize: '0.9rem', color: '#666' }}>
+                      <div>
+                        <strong>Urgency:</strong> 
+                        <span style={{ 
+                          color: urgencyColors[match.event.urgency],
+                          fontWeight: 'bold',
+                          marginLeft: '0.5rem'
+                        }}>
+                          {match.event.urgencyName}
+                        </span>
+                      </div>
                         <div>
                           <strong>Location:</strong> {match.event.city} | 
                           <strong> Date:</strong> {match.event.date}
