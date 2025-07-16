@@ -47,12 +47,6 @@ function validateProfile(data, role) {
       // Preferences is optional — no check needed
     }
   
-    // Admin-specific
-    if (role === 'admin') {
-      if (!data.verificationKey || data.verificationKey !== 'secure-admin-2025') {
-        errors.push('Invalid or missing admin verification key');
-      }
-    }
   
     return errors;
   }
