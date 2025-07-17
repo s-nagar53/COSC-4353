@@ -205,7 +205,8 @@ function EditEvent() {
   const handleDateChange = (date) => {
     if (!date) return;
     const exists = form.availability.some(
-      (d) => new Date(d).toDateString() === date.toDateString()
+      (d) => new Date(d + 'T00:00:00Z').toDateString() === new Date(date + 'T00:00:00Z').toDateString()
+
     );
     if (!exists) {
       setForm({ ...form, availability: [...form.availability, date] });
@@ -490,7 +491,8 @@ function EditEvent() {
               <ul className="selected-dates">
                 {form.availability.map((d, i) => (
                   <li key={i}>
-                    {new Date(d).toLocaleDateString()}
+                    {d.toLocaleDateString('en-US', { timeZone: 'UTC' })}
+
                     <button
                       type="button"
                       onClick={() =>

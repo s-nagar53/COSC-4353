@@ -203,7 +203,7 @@ function VolunteerMatchingForm() {
     value: volunteer.id,
     label: `${volunteer.name} - ${volunteer.city}, ${volunteer.state} (Skills: ${volunteer.matchingSkills.join(', ')})
     (Available: ${volunteer.availability ? volunteer.availability.map(date => {
-      const d = new Date(date);
+      const d = new Date(date + 'T00:00:00Z');
       // Format as MM/DD/YYYY without time
       return `${(d.getUTCMonth() + 1).toString().padStart(2, '0')}/${d.getUTCDate().toString().padStart(2, '0')}/${d.getUTCFullYear()}`;
     }).join(', ') : 'Not specified'})`
@@ -343,7 +343,7 @@ function VolunteerMatchingForm() {
               <p style={{ color: 'black', margin: '0.25rem 0' }}>
                 <strong>Event Date(s):</strong> {
         events.find(e => e.id === selectedEvent.value)?.availability?.map(date => {
-          const d = new Date(date);
+          const d = new Date(date + 'T00:00:00Z');;
           return `${(d.getUTCMonth() + 1).toString().padStart(2, '0')}/${d.getUTCDate().toString().padStart(2, '0')}/${d.getUTCFullYear()}`;
         }).join(', ') || 'Not specified'}
               </p>

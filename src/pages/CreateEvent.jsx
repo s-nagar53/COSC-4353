@@ -391,7 +391,8 @@ function CreateEvent() {
               <ul className="selected-dates">
                 {form.availability.map((d, i) => (
                   <li key={i}>
-                    {new Date(d).toLocaleDateString()}
+                    {d.toLocaleDateString('en-US', { timeZone: 'UTC' })}
+
                     <button
                       type="button"
                       onClick={() =>
