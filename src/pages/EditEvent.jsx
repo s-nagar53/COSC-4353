@@ -39,6 +39,7 @@ const SKILL_OPTIONS = [
     { value: 'Elderly Care / Companionship', label: 'Elderly Care / Companionship' },
 ];
 
+
 // Helper function to get event by eid from backend
 const getEventById = async (eid, userToken) => {
   try {
@@ -181,7 +182,9 @@ function EditEvent() {
             zip: eventData.zip || '',
             skills: eventData.skills || [],
             urgency: eventData.urgency || '',
-            availability: eventData.availability ? eventData.availability.map(date => new Date(date)) : [],
+            availability: eventData.availability
+  ? eventData.availability.map(date => new Date(date + 'T00:00:00Z'))
+  : [],
           });
           
           setFetchError(null);
@@ -205,8 +208,7 @@ function EditEvent() {
   const handleDateChange = (date) => {
     if (!date) return;
     const exists = form.availability.some(
-      (d) => new Date(d + 'T00:00:00Z').toDateString() === new Date(date + 'T00:00:00Z').toDateString()
-
+      (d) => new Date(d).toDateString() === date.toDateString()
     );
     if (!exists) {
       setForm({ ...form, availability: [...form.availability, date] });
@@ -491,8 +493,7 @@ function EditEvent() {
               <ul className="selected-dates">
                 {form.availability.map((d, i) => (
                   <li key={i}>
-                    {d.toLocaleDateString('en-US', { timeZone: 'UTC' })}
-
+                    {d.toISOString().split('T')[0]}
                     <button
                       type="button"
                       onClick={() =>
