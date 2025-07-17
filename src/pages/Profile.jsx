@@ -137,7 +137,8 @@ function Profile() {
       zip: form.zip,
       skills: form.skills,
       preferences: form.preferences,
-      availability: form.availability,
+      availability: form.availability.map(d => d.toISOString().split('T')[0]),
+
     };
   
     try {

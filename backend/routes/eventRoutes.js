@@ -27,13 +27,26 @@ router.post('/', (req, res) => {
     return res.status(400).json({ message: 'Validation errors', errors });
   }
 
-  const newEvent = { eid, uid, role, ...data };
+  // 🔧 Normalize availability to YYYY-MM-DD
+  const cleanedAvailability = (data.availability || []).map(date =>
+    new Date(date).toISOString().split('T')[0]
+  );
+
+  const newEvent = {
+    eid,
+    uid,
+    role,
+    ...data,
+    id: eid, // Ensure events work with frontend
+    availability: cleanedAvailability, // ✅ override with cleaned dates
+  };
 
   events.event = events.event.filter(e => e.eid !== eid);
   events.event.push(newEvent);
 
   res.status(200).json({ message: 'Event saved successfully' });
 });
+
 
 // Get event by eid (MUST come after /all)
 router.get('/:eid', (req, res) => {

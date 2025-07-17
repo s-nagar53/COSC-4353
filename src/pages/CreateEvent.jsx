@@ -179,8 +179,10 @@ function CreateEvent() {
           state: form.state,
           zip: form.zip,
           skills: form.skills,
+          requiredSkills: form.skills,
           urgency: form.urgency,
-          availability: form.availability.map(date => date.toISOString()),
+          availability: form.availability.map(date => date.toISOString().split('T')[0])
+
         };
 
         console.log('Submitting event data:', eventData);

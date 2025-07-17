@@ -329,7 +329,8 @@ export function ManageEvent() {
                   <div>
                     {event.availability?.map((date, index) => (
                       <div key={index}>
-                        {new Date(date).toLocaleDateString()}
+                        {new Date(date + 'T00:00:00Z').toLocaleDateString('en-US', { timeZone: 'UTC' })}
+
                       </div>
                     )) || <p>No dates specified</p>}
                   </div>
@@ -571,7 +572,8 @@ export function EventDetail() {
                   borderRadius: '4px', 
                   border: '1px solid #dee2e6' 
                 }}>
-                  {new Date(date).toLocaleDateString()}
+                  {new Date(date + 'T00:00:00Z').toLocaleDateString('en-US', { timeZone: 'UTC' })}
+
                 </div>
               )) || <p>No dates specified</p>}
             </div>

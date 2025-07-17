@@ -247,7 +247,8 @@ function EditEvent() {
           zip: form.zip,
           skills: form.skills,
           urgency: form.urgency,
-          availability: form.availability.map(date => date.toISOString()),
+          availability: form.availability.map(date => date.toISOString().split('T')[0])
+,
         };
 
         console.log('Updating event data:', eventData);
