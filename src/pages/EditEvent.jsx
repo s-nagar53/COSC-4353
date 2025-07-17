@@ -39,6 +39,12 @@ const SKILL_OPTIONS = [
     { value: 'Elderly Care / Companionship', label: 'Elderly Care / Companionship' },
 ];
 
+const toUTCDate = (d) => {
+  if (typeof d === 'string') return new Date(d + 'T00:00:00Z');
+  if (d instanceof Date) return new Date(d.toISOString().split('T')[0] + 'T00:00:00Z');
+  return new Date(d);
+};
+
 // Helper function to get event by eid from backend
 const getEventById = async (eid, userToken) => {
   try {
@@ -181,7 +187,8 @@ function EditEvent() {
             zip: eventData.zip || '',
             skills: eventData.skills || [],
             urgency: eventData.urgency || '',
-            availability: eventData.availability ? eventData.availability.map(date => new Date(date)) : [],
+            availability: eventData.availability ? eventData.availability.map(toUTCDate) : [],
+
           });
           
           setFetchError(null);
@@ -205,7 +212,7 @@ function EditEvent() {
   const handleDateChange = (date) => {
     if (!date) return;
     const exists = form.availability.some(
-      (d) => new Date(d).toDateString() === date.toDateString()
+  (d) => toUTCDate(d).toDateString() === toUTCDate(date).toDateString()
     );
     if (!exists) {
       setForm({ ...form, availability: [...form.availability, date] });
@@ -490,7 +497,8 @@ function EditEvent() {
               <ul className="selected-dates">
                 {form.availability.map((d, i) => (
                   <li key={i}>
-                    {new Date(d).toLocaleDateString()}
+                    {d.toLocaleDateString('en-US', { timeZone: 'UTC' })}
+
                     <button
                       type="button"
                       onClick={() =>

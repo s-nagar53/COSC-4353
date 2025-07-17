@@ -49,6 +49,7 @@ function Profile() {
 
   const [errors, setErrors] = useState({});
 
+
   useEffect(() => {
     const fetchProfile = async () => {
       const auth = getAuth();
@@ -74,7 +75,8 @@ function Profile() {
           zip: profile.zip || '',
           skills: profile.skills || [],
           preferences: profile.preferences || '',
-          availability: profile.availability?.map(d => new Date(d)) || [],
+         availability: profile.availability?.map(d => new Date(d)) || [],
+
         });
       } catch (err) {
         console.error('Failed to load profile:', err);
@@ -92,8 +94,8 @@ function Profile() {
   const handleDateChange = (date) => {
     if (!date) return;
     const exists = form.availability.some(
-      (d) => new Date(d).toDateString() === date.toDateString()
-    );
+  (d) => d.toDateString() === date.toDateString()
+);
     if (!exists) {
       setForm({ ...form, availability: [...form.availability, date] });
     }
@@ -294,7 +296,8 @@ function Profile() {
               <ul className="selected-dates">
                 {form.availability.map((d, i) => (
                   <li key={i}>
-                    {new Date(d).toLocaleDateString()}
+                    {d.toLocaleDateString('en-US', { timeZone: 'UTC' })}
+
                     <button
                       type="button"
                       onClick={() =>
