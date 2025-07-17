@@ -30,7 +30,8 @@ const profiles = {
       zip: '90001',
       skills: ["Event Setup / Cleanup"],
       preferences: 'Weekends only',
-      availability: ["2025-09-01"]
+      availability: ["2025-09-01"],
+      history: [],
     },
     {
       uid: '4axjSd7bv9OASxjREr7uVRr2HvJ3',
@@ -41,7 +42,8 @@ const profiles = {
       state: 'TX',
       zip: '77002',
       skills: ["Teaching / Tutoring", "Food Preparation / Serving", "Event Setup / Cleanup"],
-      availability: ["2025-10-01"]
+      availability: ["2025-10-01"],
+       history: [],
     },
     {
       uid: 'cp12tNImj0f2YsgdKQ6JmgeXdbJ2',
@@ -53,7 +55,8 @@ const profiles = {
       zip: '90005',
       skills: ["Food Preparation / Serving", "Translation / Interpretation"],
       preferences: 'Weekday mornings',
-      availability: ["2025-08-15"]
+      availability: ["2025-08-15"],
+       history: [],
     },
     {
       uid: 'IRNL3zMDkNSkEMN9lKmVvaiLHfE2',
@@ -64,7 +67,8 @@ const profiles = {
       state: 'TX',
       zip: '77002',
       skills: ["Teaching / Tutoring", "Childcare / Youth Engagement"],
-      availability: ["2025-10-01"]
+      availability: ["2025-10-01"],
+       history: [],
     },
     {
       uid: 'BiDMZnGixqQ8Cao6DuG8l59v90T2',
@@ -76,7 +80,8 @@ const profiles = {
       zip: '77066',
       skills: ["Event Setup / Cleanup", "First Aid / CPR"],
       preferences: 'Flexible schedule',
-      availability: ["2025-12-01"]
+      availability: ["2025-12-01"],
+       history: [],
     },
     {
       uid: 'CLQvkdh3vhbjASRJ5jfj7Iluzsh2',
@@ -87,7 +92,8 @@ const profiles = {
       state: 'CA',
       zip: '90026',
       skills: ["Driving / Transportation", "Technical Support / IT Help"],
-      availability: ["2025-07-20"]
+      availability: ["2025-07-20"],
+       history: [],
     }
   ],
 };

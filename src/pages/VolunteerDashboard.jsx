@@ -1,84 +1,68 @@
-//THIS IS A PLACEHOLDER PAGE FOR VOLUNTEER DASHBOARD
-import React, { useState } from 'react';
+// VolunteerDashboard.jsx
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-
-// Mock data for notifications and event history
-const notifications = [
-  { id: 1, message: 'You have been matched to the "Community Cleanup" event!', date: '2023-11-10', type: 'success' },
-  { id: 2, message: 'Event "Food Drive" has been updated.', date: '2023-11-08', type: 'info' },
-];
-
-const eventHistory = [
-  { 
-    eventName: 'Community Cleanup', 
-    eventDescription: 'Help clean up the local park and surrounding areas',
-    address1: '123 Main St',
-    address2: '',
-    city: 'Houston',
-    state: 'TX',
-    zip: '77001',
-    skills: ['Event Setup / Cleanup', 'Physical Labor'],
-    urgency: 'Medium',
-    availabilityDates: ['2023-11-15', '2023-11-16'],
-    participationStatus: 'Confirmed',
-    role: 'Volunteer',
-    eventDate: '2023-11-15'
-  },
-  { 
-    eventName: 'Food Drive', 
-    eventDescription: 'Collect and distribute food to local families in need',
-    address1: '456 Oak Ave',
-    address2: 'Suite 100',
-    city: 'Houston',
-    state: 'TX',
-    zip: '77002',
-    skills: ['Driving / Transportation', 'Food Preparation / Serving'],
-    urgency: 'High',
-    availabilityDates: ['2023-11-20', '2023-11-21'],
-    participationStatus: 'Pending',
-    role: 'Driver',
-    eventDate: '2023-11-20'
-  },
-  { 
-    eventName: 'Youth Mentorship', 
-    eventDescription: 'Mentor local youth in various skills and activities',
-    address1: '789 Pine St',
-    address2: '',
-    city: 'Houston',
-    state: 'TX',
-    zip: '77003',
-    skills: ['Teaching / Tutoring', 'Childcare / Youth Engagement'],
-    urgency: 'Low',
-    availabilityDates: ['2023-11-25'],
-    participationStatus: 'Completed',
-    role: 'Mentor',
-    eventDate: '2023-11-25'
-  }
-];
 
 function VolunteerDashboard() {
   const navigate = useNavigate();
+  const [eventHistory, setEventHistory] = useState([]);
+  const [volunteerName, setVolunteerName] = useState('');
+  const uid = localStorage.getItem('uid');
+
+  useEffect(() => {
+    if (!uid) {
+      console.warn('No UID in localStorage. Volunteer not logged in.');
+      return;
+    }
+
+    console.log('Fetching history for UID:', uid);
+
+    fetch(`http://localhost:3001/api/profile/${uid}`)
+      .then(res => {
+        if (!res.ok) throw new Error('Profile not found');
+        return res.json();
+      })
+      .then(data => {
+        setEventHistory(data.history || []);
+        setVolunteerName(data.name || '');
+      })
+      .catch(err => {
+        console.error('Failed to load volunteer profile:', err.message);
+      });
+  }, [uid]);
+
+  const notifications = [
+    { id: 1, message: 'You have been matched to the "Community Cleanup" event!', date: '2023-11-10', type: 'success' },
+    { id: 2, message: 'Event "Food Drive" has been updated.', date: '2023-11-08', type: 'info' },
+  ];
 
   const handleEditProfile = () => {
     navigate('/profile');
   };
 
   const handleLogout = () => {
-    // Clear any stored data and redirect to login
     localStorage.clear();
     navigate('/login');
   };
 
   const getNotificationIcon = (type) => {
     switch(type) {
-      case 'success':
-        return '✅';
-      case 'info':
-        return 'ℹ️';
-      default:
-        return '📢';
+      case 'success': return '✅';
+      case 'info': return 'ℹ️';
+      default: return '📢';
     }
   };
+  const getUrgencyLabel = (code) => {
+  const Urgency_LVL = [
+    { code: '1', name: 'Low' },
+    { code: '2', name: 'Medium' },
+    { code: '3', name: 'High' },
+    { code: '4', name: 'Critical' },
+  ];
+
+  const normalizedCode = String(code).trim(); // handles numbers and whitespace
+  const match = Urgency_LVL.find(item => item.code === normalizedCode);
+  return match ? match.name : 'Unknown';
+};
 
   return (
     <div className="page-wrapper" style={{ 
@@ -335,7 +319,7 @@ function VolunteerDashboard() {
                       <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600', borderTopLeftRadius: '12px' }}>Event</th>
                       <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>Location</th>
                       <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>Date</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>Role</th>
+        
                       <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>Status</th>
                       <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600', borderTopRightRadius: '12px' }}>Urgency</th>
                     </tr>
@@ -355,29 +339,18 @@ function VolunteerDashboard() {
                       }}
                       >
                         <td style={{ padding: '0.75rem', color: '#000', verticalAlign: 'top' }}>
-                          <div style={{ fontWeight: 'bold', fontSize: '1rem' }}>{event.eventName}</div>
+                          <div style={{ fontWeight: 'bold', fontSize: '1rem' }}>{event.eventname}</div>
                           <div style={{ fontSize: '0.8rem', color: '#666', marginTop: '0.25rem' }}>{event.eventDescription}</div>
                         </td>
                         <td style={{ padding: '0.75rem', color: '#000', verticalAlign: 'top' }}>
-                          <div>{event.address1}</div>
-                          {event.address2 && <div>{event.address2}</div>}
+                          <div>{event.address}</div>
+                
                           <div>{event.city}, {event.state} {event.zip}</div>
                         </td>
                         <td style={{ padding: '0.75rem', color: '#000', verticalAlign: 'top' }}>
                           {new Date(event.eventDate).toLocaleDateString()}
                         </td>
-                        <td style={{ padding: '0.75rem', color: '#000', verticalAlign: 'top' }}>
-                          <span style={{
-                            padding: '0.5rem 1rem',
-                            borderRadius: '20px',
-                            fontSize: '0.8rem',
-                            fontWeight: 'bold',
-                            backgroundColor: '#e9ecef',
-                            color: '#495057'
-                          }}>
-                            {event.role}
-                          </span>
-                        </td>
+              
                         <td style={{ padding: '0.75rem', color: '#000', verticalAlign: 'top' }}>
                           <span style={{
                             padding: '0.5rem 1rem',
@@ -393,19 +366,37 @@ function VolunteerDashboard() {
                           </span>
                         </td>
                         <td style={{ padding: '0.75rem', color: '#000', verticalAlign: 'top' }}>
-                          <span style={{
-                            padding: '0.5rem 1rem',
-                            borderRadius: '20px',
-                            fontSize: '0.8rem',
-                            fontWeight: 'bold',
-                            backgroundColor: event.urgency === 'High' ? '#f8d7da' : 
-                                           event.urgency === 'Medium' ? '#fff3cd' : '#d4edda',
-                            color: event.urgency === 'High' ? '#721c24' : 
-                                   event.urgency === 'Medium' ? '#856404' : '#155724'
-                          }}>
-                            {event.urgency}
-                          </span>
-                        </td>
+  {(() => {
+    const urgencyLabel = getUrgencyLabel(event.urgency);
+    const backgroundColor =
+      urgencyLabel === 'Critical' ? '#f5c6cb' :
+      urgencyLabel === 'High'     ? '#f8d7da' :
+      urgencyLabel === 'Medium'   ? '#fff3cd' :
+      urgencyLabel === 'Low'      ? '#d4edda' :
+                                    '#e2e3e5';
+
+    const color =
+      urgencyLabel === 'Critical' ? '#721c24' :
+      urgencyLabel === 'High'     ? '#721c24' :
+      urgencyLabel === 'Medium'   ? '#856404' :
+      urgencyLabel === 'Low'      ? '#155724' :
+                                    '#383d41';
+console.log('Raw urgency value:', event.urgency);
+    return (
+      <span style={{
+        padding: '0.5rem 1rem',
+        borderRadius: '20px',
+        fontSize: '0.8rem',
+        fontWeight: 'bold',
+        backgroundColor,
+        color
+      }}>
+        {urgencyLabel}
+      </span>
+    );
+  })()}
+</td>
+
                       </tr>
                     ))}
                   </tbody>

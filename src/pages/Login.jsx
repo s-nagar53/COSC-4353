@@ -22,6 +22,7 @@ function Login() {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
+      localStorage.setItem('uid', user.uid);
       const tokenResult = await user.getIdTokenResult();
       const role = tokenResult.claims.role;
   

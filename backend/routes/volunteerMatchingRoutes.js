@@ -304,6 +304,24 @@ router.post('/matches', (req, res) => {
 
     matchData.matches.push(newMatch);
 
+    if (!volunteer.history) volunteer.history = [];
+
+const historyEntry = {
+  eid: event.eid,
+  eventname: event.eventname,
+  eventDescription: event.eventDescription || '—',
+  address: event.address || '',
+  city: event.city || '',
+  state: event.state || '',
+  zip: event.zip || '',
+  skills: event.skills || [],
+  participationStatus: 'Confirmed',
+  eventDate: event.availability?.[0] || '',
+  urgency: event.urgency || '1'
+};
+
+volunteer.history.push(historyEntry);
+
 
     res.status(201).json({
       success: true,
