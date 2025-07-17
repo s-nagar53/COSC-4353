@@ -11,7 +11,7 @@ function validateEvent(data) {
     if (!data.urgency) errors.push('Missing urgency level');
   
     if (!Array.isArray(data.skills) || data.skills.length === 0) {
-      error.push('At least one skill required');
+      errors.push('At least one skill required');
     }
   
     return errors;

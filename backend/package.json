@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+      "test": "jest --coverage"
   },
   "keywords": [],
   "author": "",
@@ -14,5 +14,13 @@
     "dotenv": "^17.2.0",
     "express": "^5.1.0",
     "firebase-admin": "^13.4.0"
-  }
+  },
+  "jest": {
+  "testEnvironment": "node",
+  "coveragePathIgnorePatterns": [
+    "/node_modules/",
+    "<rootDir>/backend/data/",
+    "<rootDir>/backend/utils/validateEvent.js"
+  ]
+}
 }

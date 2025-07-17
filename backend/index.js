@@ -19,6 +19,7 @@ try {
     const serviceAccount = require(keyPath);
     
     // Check if it's a valid service account
+    
     if (serviceAccount.private_key && serviceAccount.client_email && serviceAccount.project_id) {
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
@@ -26,7 +27,8 @@ try {
       
       firebaseAdminInitialized = true;
       console.log('✅ Firebase Admin initialized');
-    } else {
+    }
+    else {
       console.log('⚠️ Invalid service account key. Continuing without Firebase Admin...');
     }
   } else {
@@ -120,13 +122,19 @@ app.post('/set-role', async (req, res) => {
 
 const PORT = 3001;
 
-app.listen(PORT, () => {
-  console.log(`🚀 Backend running on http://localhost:${PORT}`);
-  console.log(`📊 Loaded ${Object.keys(profiles).reduce((total, key) => total + profiles[key].length, 0)} profiles`);
-  console.log(`📅 Loaded ${events.event ? events.event.length : 0} events`);
-  
-  // Log sample event data to verify eid structure
-  if (events.event && events.event.length > 0) {
-    console.log(`📋 Sample event: ${events.event[0].eid || 'No eid found'}`);
-  }
-});
+//  Only start the server if NOT in test mode
+/* istanbul ignore next */
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, () => {
+    console.log(`🚀 Backend running on http://localhost:${PORT}`);
+    console.log(`📊 Loaded ${Object.keys(profiles).reduce((total, key) => total + profiles[key].length, 0)} profiles`);
+    console.log(`📅 Loaded ${events.event ? events.event.length : 0} events`);
+
+    if (events.event && events.event.length > 0) {
+      console.log(`📋 Sample event: ${events.event[0].eid || 'No eid found'}`);
+    }
+  });
+}
+
+// Export app for testing
+module.exports = app;

@@ -7,9 +7,8 @@ const { events } = require('../data/memoryEvents');
 // console.log('Total volunteers:', profiles.volunteers.length);
 // console.log('Total events:', events.event.length);
 
-// In-memory storage for matches (since no database yet)
-let matches = [];
-let matchIdCounter = 1;
+const matchData = require('../data/memoryMatches');
+const matches = matchData.matches;
 
 // GET /api/matching/events
 // Get all events for the event dropdown
@@ -273,7 +272,7 @@ router.post('/matches', (req, res) => {
 
     // Create new match
     const newMatch = {
-      id: matchIdCounter++,
+      id: matchData.matchIdCounter++,
       volunteerId,
       eventId,
       volunteerName: volunteer.name,
@@ -303,7 +302,8 @@ router.post('/matches', (req, res) => {
       }
     };
 
-    matches.push(newMatch);
+    matchData.matches.push(newMatch);
+
 
     res.status(201).json({
       success: true,
