@@ -171,3 +171,54 @@ describe('GET /api/profile/volunteer-history', () => {
     expect(res.body[1].history.length).toBe(0);
   });
 });
+it('should add history to a volunteer profile', async () => {
+  // Setup a volunteer
+  profiles.volunteers.push({
+    uid: 'v1',
+    name: 'Alice',
+    email: 'alice@example.com',
+    skills: ['Cooking']
+  });
+
+  const res = await request(app).post('/api/profile/v1/history').send({
+    eid: 'ev123',
+    eventname: 'Food Drive',
+    address: '123 Main St',
+    city: 'Houston',
+    state: 'TX',
+    zip: '77001',
+    skills: ['Cooking'],
+    requiredSkills: ['Cooking'],
+    urgency: 'High',
+    availability: ['2025-12-01']
+  });
+
+  expect(res.statusCode).toBe(200);
+  expect(res.body.message).toBe('History added');
+  expect(res.body.history.length).toBe(1);
+  expect(res.body.history[0].eid).toBe('ev123');
+});
+it('should get all volunteers with their history', async () => {
+  profiles.volunteers.length = 0; // clear
+  profiles.volunteers.push({
+    uid: 'v1',
+    name: 'Alice',
+    email: 'alice@example.com',
+    skills: ['Teaching'],
+    history: [
+      {
+        eid: 'ev001',
+        eventname: 'Teach Kids',
+        availability: ['2025-09-01']
+      }
+    ]
+  });
+
+  const res = await request(app).get('/api/profile/volunteer-history');
+
+  expect(res.statusCode).toBe(200);
+  expect(Array.isArray(res.body)).toBe(true);
+  expect(res.body.length).toBe(1);
+  expect(res.body[0].name).toBe('Alice');
+  expect(res.body[0].totalEvents).toBe(1);
+});
