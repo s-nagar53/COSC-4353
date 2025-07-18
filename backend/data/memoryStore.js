@@ -92,4 +92,7 @@ const profiles = {
   ],
 };
 
-module.exports = { profiles };
+// In-memory notifications store (by user id)
+const notifications = {};
+
+module.exports = { profiles, notifications };

@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { events } = require('../data/memoryEvents');
 const { validateEvent } = require('../utils/validateEvent');
+const notificationService = require('../utils/notificationService');
+const matchData = require('../data/memoryMatches');
 
 // Get all events (MUST come before /:eid)
 router.get('/all', (req, res) => {
@@ -44,6 +46,21 @@ router.post('/', (req, res) => {
   events.event = events.event.filter(e => e.eid !== eid);
   events.event.push(newEvent);
 
+  // Notify all matched volunteers for this event about the update
+  const matches = matchData.matches.filter(m => m.eventId === eid);
+  matches.forEach(match => {
+    notificationService.sendNotification(match.volunteerId, {
+      type: 'event_update',
+      message: `Event '${newEvent.eventname}' has been updated.`,
+      data: {
+        eventId: newEvent.eid,
+        eventName: newEvent.eventname,
+        date: newEvent.availability && newEvent.availability[0] ? new Date(newEvent.availability[0]).toISOString().split('T')[0] : 'TBD',
+        city: newEvent.city
+      }
+    });
+  });
+
   res.status(200).json({ message: 'Event saved successfully' });
 });
 
@@ -71,6 +88,17 @@ router.delete('/:eid', (req, res) => {
   
   if (events.event.length < initialLength) {
     console.log('✅ Event deleted:', eid);
+    // Notify all matched volunteers for this event about the cancellation
+    const matches = matchData.matches.filter(m => m.eventId === eid);
+    matches.forEach(match => {
+      notificationService.sendNotification(match.volunteerId, {
+        type: 'event_cancelled',
+        message: `Event '${eid}' has been cancelled or deleted.`,
+        data: {
+          eventId: eid
+        }
+      });
+    });
     res.json({ message: 'Event deleted successfully' });
   } else {
     console.log('❌ Event not found for deletion:', eid);

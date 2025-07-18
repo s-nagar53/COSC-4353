@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-      "test": "jest --coverage"
+    "test": "jest --coverage"
   },
   "keywords": [],
   "author": "",
@@ -16,11 +16,11 @@
     "firebase-admin": "^13.4.0"
   },
   "jest": {
-  "testEnvironment": "node",
-  "coveragePathIgnorePatterns": [
-    "/node_modules/",
-    "<rootDir>/backend/data/",
-    "<rootDir>/backend/utils/validateEvent.js"
-  ]
-}
+    "testEnvironment": "node",
+    "coveragePathIgnorePatterns": [
+      "/node_modules/",
+      "<rootDir>/backend/data/",
+      "<rootDir>/backend/utils/validateEvent.js"
+    ]
+  }
 }

@@ -1,12 +1,22 @@
 //THIS IS A PLACEHOLDER PAGE FOR ADMIN DASHBOARD
 import { useNavigate } from 'react-router-dom';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './Profile.css';
 import { getAuth, signOut } from 'firebase/auth';
+import api from '../firebase';
 
 
-function AdminDashboard() {
+function AdminDashboard({ user }) {
   const navigate = useNavigate();
+  const [notifications, setNotifications] = useState([]);
+
+  useEffect(() => {
+    if (user?.uid) {
+      api.get(`/notifications/${user.uid}`)
+        .then(res => setNotifications(res.data.notifications))
+        .catch(() => setNotifications([]));
+    }
+  }, [user]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -70,10 +80,23 @@ function AdminDashboard() {
           <button type="button" onClick={handleEditProfile} style={{ marginTop: '1rem' }}>
             Edit Profile
           </button>
+          <button type="button" onClick={handleNotifications} style={{ marginTop: '1rem' }}>
+            View Notifications
+          </button>
           <button type="button" onClick={handleLogout} style={{ marginTop: '1rem', backgroundColor: '#d9534f', color: 'white' }}>
             Logout
           </button>
         </form>
+        <h2>Notifications</h2>
+        <ul>
+          {notifications.length === 0 && <li>No notifications</li>}
+          {notifications.map((n, i) => (
+            <li key={i} style={{ fontWeight: n.read ? 'normal' : 'bold' }}>
+              [{n.type}] {n.message} <br />
+              <small>{n.timestamp}</small>
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
   );

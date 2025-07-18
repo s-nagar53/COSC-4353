@@ -3,6 +3,8 @@ const express = require('express');
 const router = express.Router();
 const { profiles } = require('../data/memoryStore');
 const { events } = require('../data/memoryEvents');
+const notificationService = require('../utils/notificationService');
+const NotificationAggregator = require('../utils/notificationAggregator');
 
 // console.log('Total volunteers:', profiles.volunteers.length);
 // console.log('Total events:', events.event.length);
@@ -304,6 +306,18 @@ router.post('/matches', (req, res) => {
 
     matchData.matches.push(newMatch);
 
+    // Send notification to volunteer for assignment
+    notificationService.sendNotification(volunteer.uid, {
+      type: 'assignment',
+      message: `You have been assigned to the event: ${event.eventname}`,
+      data: {
+        eventId: event.eid,
+        eventName: event.eventname,
+        date: event.availability && event.availability[0] ? new Date(event.availability[0]).toISOString().split('T')[0] : 'TBD',
+        city: event.city
+      }
+    });
+
 
     res.status(201).json({
       success: true,
@@ -382,6 +396,24 @@ router.delete('/matches/:matchId', (req, res) => {
     }
 
     const deletedMatch = matches.splice(matchIndex, 1)[0];
+
+    // Send notification to volunteer for removal
+    if (deletedMatch && deletedMatch.volunteerId) {
+      let eventName = deletedMatch.eventName;
+      if (!eventName && deletedMatch.eventId) {
+        // Try to look up the event name from events
+        const event = events.event.find(e => e.eid === deletedMatch.eventId);
+        eventName = event ? event.eventname : 'the event';
+      }
+      notificationService.sendNotification(deletedMatch.volunteerId, {
+        type: 'removed',
+        message: `You have been removed from the event: ${eventName}`,
+        data: {
+          eventId: deletedMatch.eventId,
+          eventName: eventName,
+        }
+      });
+    }
 
     res.json({
       success: true,
@@ -514,6 +546,83 @@ router.get('/event-stats/:eventId', (req, res) => {
       message: 'Failed to fetch event statistics',
       error: error.message
     });
+  }
+});
+
+// POST /api/matching/reminder
+// Body: { volunteerId, eventId, message }
+router.post('/reminder', (req, res) => {
+  const { volunteerId, eventId, message } = req.body;
+  if (!volunteerId || !eventId || !message) {
+    return res.status(400).json({ success: false, message: 'volunteerId, eventId, and message are required' });
+  }
+  const event = events.event.find(e => e.eid === eventId);
+  if (!event) {
+    return res.status(404).json({ success: false, message: 'Event not found' });
+  }
+  notificationService.sendNotification(volunteerId, {
+    type: 'reminder',
+    message,
+    data: {
+      eventId: event.eid,
+      eventName: event.eventname,
+      date: event.availability && event.availability[0] ? new Date(event.availability[0]).toISOString().split('T')[0] : 'TBD',
+      city: event.city
+    }
+  });
+  res.status(201).json({ success: true, message: 'Reminder notification sent' });
+});
+
+// GET /api/matching/match-notifications
+router.get('/match-notifications', (req, res) => {
+  try {
+    const notificationsMap = NotificationAggregator.getMatchNotifications();
+    res.json({ success: true, notifications: notificationsMap });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to aggregate notifications', error: error.message });
+  }
+});
+
+// GET /api/matching/volunteer-history/:volunteerId
+// Returns all events (with details) that a volunteer has participated in
+router.get('/volunteer-history/:volunteerId', (req, res) => {
+  try {
+    const { volunteerId } = req.params;
+    // Find all matches for this volunteer
+    const volunteerMatches = matches.filter(m => m.volunteerId === volunteerId);
+    // For each match, get the event details
+    const eventHistory = volunteerMatches.map(match => {
+      const event = events.event.find(e => e.eid === match.eventId);
+      // Determine if this is the current event (active and event date is today or in the future)
+      let participationStatus = 'Removed';
+      if (match.status === 'active' && event?.availability?.length > 0) {
+        const today = new Date();
+        const eventDates = event.availability.map(date => new Date(date));
+        if (eventDates.some(date => date >= today.setHours(0,0,0,0))) {
+          participationStatus = 'Current';
+        } else {
+          participationStatus = 'Confirmed';
+        }
+      }
+      return {
+        eventName: event?.eventname || match.eventName || 'Unknown Event',
+        eventDescription: event?.description || '',
+        address1: event?.address || '',
+        address2: '',
+        city: event?.city || '',
+        state: event?.state || '',
+        zip: event?.zip || '',
+        skills: match.matchedSkills || [],
+        urgency: event?.urgency ? getUrgencyName(event.urgency) : '',
+        availabilityDates: event?.availability || [],
+        participationStatus,
+        eventDate: event?.availability?.[0] || '',
+        createdAt: match.createdAt || '',
+      };
+    });
+    res.json({ success: true, data: eventHistory });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to fetch event history', error: error.message });
   }
 });
 

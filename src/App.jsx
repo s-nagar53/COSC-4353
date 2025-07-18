@@ -1,4 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import Login from './pages/Login';
 import Register from './pages/Register'; 
 import Profile from './pages/Profile';
@@ -13,6 +15,16 @@ import NotificationPage from './pages/NotificationPage';
 import VolunteerHistoryPage from './pages/VolunteerHistoryPage';
 
 function App() {
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const auth = getAuth();
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      setUser(firebaseUser);
+    });
+    return () => unsubscribe();
+  }, []);
+
   return (
     <Router>
       <Routes>
@@ -20,8 +32,8 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/profile" element={<Profile />} />
-        <Route path="/volunteer-dashboard" element={<VolunteerDashboard />} />
-        <Route path="/admin-dashboard" element={<AdminDashboard />} />
+        <Route path="/volunteer-dashboard" element={<VolunteerDashboard user={user} />} />
+        <Route path="/admin-dashboard" element={<AdminDashboard user={user} />} />
         <Route path="/admin-profile" element={<AdminProfile />} />
         <Route path="/create-event" element={<CreateEvent />} />
         <Route path="/manage-event" element={<ManageEvent />} />

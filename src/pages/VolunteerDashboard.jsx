@@ -1,12 +1,7 @@
 //THIS IS A PLACEHOLDER PAGE FOR VOLUNTEER DASHBOARD
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-
-// Mock data for notifications and event history
-const notifications = [
-  { id: 1, message: 'You have been matched to the "Community Cleanup" event!', date: '2023-11-10', type: 'success' },
-  { id: 2, message: 'Event "Food Drive" has been updated.', date: '2023-11-08', type: 'info' },
-];
+import api from '../firebase';
 
 const eventHistory = [
   { 
@@ -56,8 +51,22 @@ const eventHistory = [
   }
 ];
 
-function VolunteerDashboard() {
+function VolunteerDashboard({ user }) {
   const navigate = useNavigate();
+  const [notifications, setNotifications] = useState([]);
+  const [eventHistory, setEventHistory] = useState([]);
+
+  useEffect(() => {
+    if (user?.uid) {
+      api.get(`/notifications/${user.uid}`)
+        .then(res => setNotifications(res.data.notifications))
+        .catch(() => setNotifications([]));
+      // Fetch event history
+      api.get(`/matching/volunteer-history/${user.uid}`)
+        .then(res => setEventHistory(res.data.data || []))
+        .catch(() => setEventHistory([]));
+    }
+  }, [user]);
 
   const handleEditProfile = () => {
     navigate('/profile');
@@ -71,14 +80,27 @@ function VolunteerDashboard() {
 
   const getNotificationIcon = (type) => {
     switch(type) {
-      case 'success':
+      case 'assignment':
         return '✅';
-      case 'info':
+      case 'event_update':
         return 'ℹ️';
+      case 'event_cancelled':
+        return '❌';
+      case 'reminder':
+        return '⏰';
+      case 'removed':
+        return '🚫';
       default:
         return '📢';
     }
   };
+
+  // Sort notifications by timestamp descending (most recent first)
+  const sortedNotifications = [...notifications].sort((a, b) => {
+    const tA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+    const tB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+    return tB - tA;
+  });
 
   return (
     <div className="page-wrapper" style={{ 
@@ -211,7 +233,7 @@ function VolunteerDashboard() {
             }}>
               📢 Notifications
             </h2>
-            {notifications.length === 0 ? (
+            {sortedNotifications.length === 0 ? (
               <div style={{
                 background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)',
                 padding: '2rem',
@@ -223,8 +245,8 @@ function VolunteerDashboard() {
               </div>
             ) : (
               <ul style={{ listStyle: 'none', padding: 0 }}>
-                {notifications.map((notif) => (
-                  <li key={notif.id} style={{
+                {sortedNotifications.map((notif, idx) => (
+                  <li key={idx} style={{
                     background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)',
                     borderRadius: '15px',
                     padding: '1.25rem',
@@ -249,7 +271,7 @@ function VolunteerDashboard() {
                       <div style={{ flex: 1 }}>
                         <span style={{ color: '#000', fontSize: '1rem', lineHeight: '1.4' }}>{notif.message}</span>
                         <div style={{ fontSize: '0.9em', color: '#357189', marginTop: '0.5rem', fontWeight: '500' }}>
-                          {new Date(notif.date).toLocaleDateString()}
+                          {notif.timestamp ? new Date(notif.timestamp).toLocaleDateString() : ''}
                         </div>
                       </div>
                     </div>
@@ -335,7 +357,7 @@ function VolunteerDashboard() {
                       <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600', borderTopLeftRadius: '12px' }}>Event</th>
                       <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>Location</th>
                       <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>Date</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>Role</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>Skills</th>
                       <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>Status</th>
                       <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600', borderTopRightRadius: '12px' }}>Urgency</th>
                     </tr>
@@ -375,7 +397,7 @@ function VolunteerDashboard() {
                             backgroundColor: '#e9ecef',
                             color: '#495057'
                           }}>
-                            {event.role}
+                            {event.skills && event.skills.length > 0 ? event.skills.join(', ') : 'N/A'}
                           </span>
                         </td>
                         <td style={{ padding: '0.75rem', color: '#000', verticalAlign: 'top' }}>

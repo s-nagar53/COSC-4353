@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import React, { useState, useEffect } from 'react';
 import './Profile.css';
 import Select from 'react-select';
+import api from '../firebase';
 
 function VolunteerMatchingForm() {
   
@@ -11,6 +12,7 @@ function VolunteerMatchingForm() {
   const [events, setEvents] = useState([]);
   const [volunteers, setVolunteers] = useState([]);
   const [matches, setMatches] = useState([]);
+  const [matchNotifications, setMatchNotifications] = useState({});
   
   // form state
   const [selectedEvent, setSelectedEvent] = useState(null);
@@ -92,7 +94,7 @@ function VolunteerMatchingForm() {
   };
 
 
-  // fetch existing matches
+  // fetch existing matches and their notifications
   const fetchExistingMatches = async () => {
     try {
       const response = await fetch('http://localhost:3001/api/matching/matches', {
@@ -107,6 +109,18 @@ function VolunteerMatchingForm() {
       
       const data = await response.json();
       setMatches(data.data);
+
+      // Fetch notifications for each volunteer in the matches
+      const notificationsMap = {};
+      await Promise.all(data.data.map(async (match) => {
+        try {
+          const res = await api.get(`/notifications/${match.volunteer.id}`);
+          notificationsMap[match.id] = res.data.notifications || [];
+        } catch (e) {
+          notificationsMap[match.id] = [];
+        }
+      }));
+      setMatchNotifications(notificationsMap);
     } catch (error) {
       console.error('Error fetching existing matches:', error);
       setErrors({ matches: 'Failed to load existing matches.' });

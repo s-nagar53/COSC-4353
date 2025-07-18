@@ -56,6 +56,9 @@ app.use('/api/profile', profileRoutes);
 const eventRoutes = require('./routes/eventRoutes');
 app.use('/api/event', eventRoutes);
 
+const notificationRoutes = require('./routes/notificationRoutes');
+app.use('/api/notifications', notificationRoutes);
+
 app.use('/api/matching', volunteerMatchingRoutes);
 
 // Test route to verify backend is working
