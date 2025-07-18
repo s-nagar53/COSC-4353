@@ -87,16 +87,6 @@ function AdminDashboard({ user }) {
             Logout
           </button>
         </form>
-        <h2>Notifications</h2>
-        <ul>
-          {notifications.length === 0 && <li>No notifications</li>}
-          {notifications.map((n, i) => (
-            <li key={i} style={{ fontWeight: n.read ? 'normal' : 'bold' }}>
-              [{n.type}] {n.message} <br />
-              <small>{n.timestamp}</small>
-            </li>
-          ))}
-        </ul>
       </div>
     </div>
   );

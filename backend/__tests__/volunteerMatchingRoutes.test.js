@@ -312,3 +312,111 @@ it('should fallback urgencyName to match data if event is missing', async () => 
   expect(res.body.data[0].event.urgencyName).toBeDefined();
 });
 
+describe('POST /api/matching/reminder', () => {
+  it('should send a reminder notification', async () => {
+    const res = await request(app).post('/api/matching/reminder').send({
+      volunteerId: 'vol1',
+      eventId: 'ev1',
+      message: 'Test reminder message'
+    });
+    expect(res.statusCode).toBe(201);
+    expect(res.body.success).toBe(true);
+    expect(res.body.message).toMatch(/Reminder notification sent/);
+  });
+
+  it('should return 400 if required fields are missing', async () => {
+    const res = await request(app).post('/api/matching/reminder').send({
+      volunteerId: 'vol1',
+      // missing eventId and message
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toMatch(/required/);
+  });
+});
+
+describe('GET /api/matching/volunteer-history/:volunteerId', () => {
+  it('should return volunteer history', async () => {
+    // First create a match to have history
+    await request(app).post('/api/matching/matches').send({
+      volunteerId: 'vol1',
+      eventId: 'ev1'
+    });
+
+    const res = await request(app).get('/api/matching/volunteer-history/vol1');
+    expect(res.statusCode).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(Array.isArray(res.body.data)).toBe(true);
+    expect(res.body.data.length).toBeGreaterThan(0);
+  });
+
+  it('should return empty array if volunteer has no history', async () => {
+    const res = await request(app).get('/api/matching/volunteer-history/vol1');
+    expect(res.statusCode).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.length).toBe(0);
+  });
+});
+
+describe('GET /api/matching/match-notifications', () => {
+  it('should return aggregated match notifications', async () => {
+    const res = await request(app).get('/api/matching/match-notifications');
+    expect(res.statusCode).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.notifications).toBeDefined();
+  });
+});
+
+describe('Event urgency formatting', () => {
+  it('should include urgency name in event responses', async () => {
+    const res = await request(app).get('/api/matching/events');
+    expect(res.statusCode).toBe(200);
+    expect(res.body.data[0]).toHaveProperty('urgencyName');
+    expect(res.body.data[0].urgencyName).toMatch(/Urgency/);
+  });
+
+  it('should include urgency name in match responses', async () => {
+    // First create a match
+    await request(app).post('/api/matching/matches').send({
+      volunteerId: 'vol1',
+      eventId: 'ev1'
+    });
+    
+    const res = await request(app).get('/api/matching/matches');
+    expect(res.statusCode).toBe(200);
+    expect(res.body.data[0].event).toHaveProperty('urgencyName');
+    expect(res.body.data[0].event.urgencyName).toMatch(/Urgency/);
+  });
+});
+
+describe('Volunteer history edge cases', () => {
+  it('should handle volunteer with matches to deleted events', async () => {
+    // Create a match first
+    await request(app).post('/api/matching/matches').send({
+      volunteerId: 'vol1',
+      eventId: 'ev1'
+    });
+
+    // Delete the event (simulate case where event was deleted but match remains)
+    events.event = [];
+
+    const res = await request(app).get('/api/matching/volunteer-history/vol1');
+    expect(res.statusCode).toBe(200);
+    expect(res.body.data[0].eventName).toBeDefined(); // Should fall back to match data
+  });
+});
+
+describe('Match creation edge cases', () => {
+  it('should create match when volunteer has no availability array', async () => {
+    // Remove availability from volunteer
+    profiles.volunteers[0].availability = undefined;
+
+    const res = await request(app).post('/api/matching/matches').send({
+      volunteerId: 'vol1',
+      eventId: 'ev1'
+    });
+
+    expect(res.statusCode).toBe(201);
+    expect(res.body.success).toBe(true);
+  });
+});
