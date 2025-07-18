@@ -308,20 +308,38 @@ router.post('/matches', (req, res) => {
 
     // Add match to volunteer's history
     if (!volunteer.history) volunteer.history = [];
-    const historyEntry = {
-      eid: event.eid,
-      eventname: event.eventname,
-      eventDescription: event.eventDescription || '—',
-      address: event.address || '',
-      city: event.city || '',
-      state: event.state || '',
-      zip: event.zip || '',
-      skills: event.skills || [],
-      participationStatus: 'Confirmed',
-      eventDate: event.availability?.[0] || '',
-      urgency: event.urgency || '1'
-    };
-    volunteer.history.push(historyEntry);
+
+      const existingEntry = volunteer.history.find(h => h.eid === event.eid);
+    if (existingEntry) {
+      // Update existing entry
+      existingEntry.participationStatus = 'Confirmed';
+      existingEntry.eventDate = event.availability?.[0] || '';
+      existingEntry.urgency = event.urgency || '1';
+      existingEntry.eventDescription = event.eventDescription || '—';
+      existingEntry.address = event.address || '';
+      existingEntry.city = event.city || '';
+      existingEntry.state = event.state || '';
+      existingEntry.zip = event.zip || '';
+      existingEntry.skills = event.skills || [];
+      existingEntry.removedAt = undefined; // clear removal flag
+    } else {
+    // Create new entry
+      const historyEntry = {
+        eid: event.eid,
+        eventname: event.eventname,
+        eventDescription: event.eventDescription || '—',
+        address: event.address || '',
+        city: event.city || '',
+        state: event.state || '',
+        zip: event.zip || '',
+        skills: event.skills || [],
+        participationStatus: 'Confirmed',
+        eventDate: event.availability?.[0] || '',
+        urgency: event.urgency || '1'
+      };
+      volunteer.history.push(historyEntry);
+  }
+
 
     // Send notification to volunteer for assignment
     notificationService.sendNotification(volunteer.uid, {
@@ -413,7 +431,7 @@ router.delete('/matches/:matchId', (req, res) => {
     }
 
     const deletedMatch = matches.splice(matchIndex, 1)[0];
-    
+
     // 🔄 Update volunteer history status to "Unmatched"
     if (deletedMatch?.volunteerId && deletedMatch?.eventId) {
       const volunteer = profiles.volunteers.find(v => v.uid === deletedMatch.volunteerId);
@@ -641,7 +659,7 @@ router.get('/volunteer-history/:volunteerId', (req, res) => {
         state: event?.state || '',
         zip: event?.zip || '',
         skills: match.matchedSkills || [],
-        urgency: event?.urgency ? getUrgencyName(event.urgency) : '',
+        urgency: event?.urgency || '',
         availabilityDates: event?.availability || [],
         participationStatus,
         eventDate: event?.availability?.[0] || '',

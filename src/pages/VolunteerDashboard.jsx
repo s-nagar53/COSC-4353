@@ -3,53 +3,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../firebase';
 
-const eventHistory = [
-  { 
-    eventName: 'Community Cleanup', 
-    eventDescription: 'Help clean up the local park and surrounding areas',
-    address1: '123 Main St',
-    address2: '',
-    city: 'Houston',
-    state: 'TX',
-    zip: '77001',
-    skills: ['Event Setup / Cleanup', 'Physical Labor'],
-    urgency: 'Medium',
-    availabilityDates: ['2023-11-15', '2023-11-16'],
-    participationStatus: 'Confirmed',
-    role: 'Volunteer',
-    eventDate: '2023-11-15'
-  },
-  { 
-    eventName: 'Food Drive', 
-    eventDescription: 'Collect and distribute food to local families in need',
-    address1: '456 Oak Ave',
-    address2: 'Suite 100',
-    city: 'Houston',
-    state: 'TX',
-    zip: '77002',
-    skills: ['Driving / Transportation', 'Food Preparation / Serving'],
-    urgency: 'High',
-    availabilityDates: ['2023-11-20', '2023-11-21'],
-    participationStatus: 'Pending',
-    role: 'Driver',
-    eventDate: '2023-11-20'
-  },
-  { 
-    eventName: 'Youth Mentorship', 
-    eventDescription: 'Mentor local youth in various skills and activities',
-    address1: '789 Pine St',
-    address2: '',
-    city: 'Houston',
-    state: 'TX',
-    zip: '77003',
-    skills: ['Teaching / Tutoring', 'Childcare / Youth Engagement'],
-    urgency: 'Low',
-    availabilityDates: ['2023-11-25'],
-    participationStatus: 'Completed',
-    role: 'Mentor',
-    eventDate: '2023-11-25'
-  }
-];
+const urgencyMap = {
+  '1': { label: 'Low', bg: '#d4edda', color: '#155724' },       // green
+  '2': { label: 'Medium', bg: '#fff3cd', color: '#856404' },    // yellow
+  '3': { label: 'High', bg: '#f8d7da', color: '#721c24' },       // red
+  '4': { label: 'Critical', bg: '#f5c6cb', color: '#721c24' }    // darker red
+};
 
 function VolunteerDashboard({ user }) {
   const navigate = useNavigate();
@@ -386,7 +345,7 @@ function VolunteerDashboard({ user }) {
                           <div>{event.city}, {event.state} {event.zip}</div>
                         </td>
                         <td style={{ padding: '0.75rem', color: '#000', verticalAlign: 'top' }}>
-                          {new Date(event.eventDate).toLocaleDateString()}
+                          {event.eventDate ? event.eventDate.split('T')[0] : '—'}
                         </td>
                         <td style={{ padding: '0.75rem', color: '#000', verticalAlign: 'top' }}>
                           <span style={{
@@ -420,12 +379,10 @@ function VolunteerDashboard({ user }) {
                             borderRadius: '20px',
                             fontSize: '0.8rem',
                             fontWeight: 'bold',
-                            backgroundColor: event.urgency === 'High' ? '#f8d7da' : 
-                                           event.urgency === 'Medium' ? '#fff3cd' : '#d4edda',
-                            color: event.urgency === 'High' ? '#721c24' : 
-                                   event.urgency === 'Medium' ? '#856404' : '#155724'
-                          }}>
-                            {event.urgency}
+                            backgroundColor: urgencyMap[event.urgency]?.bg || '#e2e3e5',
+                            color: urgencyMap[event.urgency]?.color || '#383d41'
+                          }}> 
+                            {urgencyMap[event.urgency]?.label || '—'}
                           </span>
                         </td>
                       </tr>

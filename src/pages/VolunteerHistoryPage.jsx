@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 function VolunteerHistoryPage() {
+  const navigate = useNavigate();
   const [volunteers, setVolunteers] = useState([]);
   const [selectedVolunteer, setSelectedVolunteer] = useState(null);
 
@@ -127,7 +129,7 @@ function VolunteerHistoryPage() {
                             <td style={tdStyle}>{event.state || '—'}</td>
                             <td style={tdStyle}>{(event.skills || []).join(', ')}</td>
                             <td style={tdStyle}>
-                              {event.eventDate ? new Date(event.eventDate).toLocaleDateString() : '—'}
+                              {event.eventDate ? event.eventDate.split('T')[0] : '—'}
                             </td>
                             <td style={tdStyle}>
                               <span style={{
@@ -154,6 +156,34 @@ function VolunteerHistoryPage() {
           </div>
         </div>
       </div>
+      <div style={{ display: 'flex', justifyContent: 'center', marginTop: '2rem' }}>
+  <button
+    onClick={() => navigate('/admin-dashboard')}
+    style={{
+      padding: '0.6rem 1.4rem',
+      backgroundColor: '#357189',
+      color: 'white',
+      border: 'none',
+      borderRadius: '25px',
+      cursor: 'pointer',
+      fontSize: '0.95rem',
+      fontWeight: '600',
+      boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+      transition: 'all 0.3s ease'
+    }}
+    onMouseOver={(e) => {
+      e.target.style.transform = 'translateY(-2px)';
+      e.target.style.boxShadow = '0 6px 16px rgba(0,0,0,0.15)';
+    }}
+    onMouseOut={(e) => {
+      e.target.style.transform = 'translateY(0)';
+      e.target.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+    }}
+  >
+    ← Back to Dashboard
+  </button>
+</div>
+
     </div>
   );
 }
