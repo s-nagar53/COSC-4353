@@ -105,3 +105,69 @@ it('should return a volunteer profile if UID exists in volunteers', async () => 
   expect(res.statusCode).toBe(200);
   expect(res.body.name).toBe('Volunteer User');
 });
+
+describe('POST /api/profile/:uid/history', () => {
+  it('should add history to a valid volunteer', async () => {
+    const uid = 'vol-history-test';
+    profiles.volunteers.push({
+      uid,
+      role: 'volunteer',
+      name: 'History Tester',
+      city: 'Dallas',
+      state: 'TX',
+      history: []
+    });
+
+    const historyPayload = {
+      eid: 'event123',
+      eventname: 'Food Drive',
+      address: '123 Street',
+      city: 'Dallas',
+      state: 'TX',
+      zip: '75001',
+      skills: ['Serving'],
+      requiredSkills: ['Serving'],
+      urgency: '2',
+      availability: ['2024-11-01']
+    };
+
+    const res = await request(app).post(`/api/profile/${uid}/history`).send(historyPayload);
+    expect(res.statusCode).toBe(200);
+    expect(res.body.message).toBe('History added');
+    expect(res.body.history.length).toBe(1);
+    expect(res.body.history[0].eventname).toBe('Food Drive');
+  });
+
+  it('should return 404 for unknown volunteer', async () => {
+    const res = await request(app).post('/api/profile/unknown/history').send({});
+    expect(res.statusCode).toBe(404);
+    expect(res.body.message).toBe('Volunteer not found');
+  });
+});
+
+describe('GET /api/profile/volunteer-history', () => {
+  it('should return all volunteers with their history', async () => {
+    profiles.volunteers = [
+      {
+        uid: 'v1',
+        name: 'One',
+        email: 'one@email.com',
+        skills: ['First Aid'],
+        history: [{ eid: 'e1', eventname: 'Event 1' }]
+      },
+      {
+        uid: 'v2',
+        name: 'Two',
+        email: 'two@email.com',
+        skills: ['CPR'],
+        history: []
+      }
+    ];
+
+    const res = await request(app).get('/api/profile/volunteer-history');
+    expect(res.statusCode).toBe(200);
+    expect(res.body.length).toBe(2);
+    expect(res.body[0].history.length).toBe(1);
+    expect(res.body[1].history.length).toBe(0);
+  });
+});
