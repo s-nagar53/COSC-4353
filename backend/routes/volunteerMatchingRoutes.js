@@ -306,6 +306,23 @@ router.post('/matches', (req, res) => {
 
     matchData.matches.push(newMatch);
 
+    // Add match to volunteer's history
+    if (!volunteer.history) volunteer.history = [];
+    const historyEntry = {
+      eid: event.eid,
+      eventname: event.eventname,
+      eventDescription: event.eventDescription || '—',
+      address: event.address || '',
+      city: event.city || '',
+      state: event.state || '',
+      zip: event.zip || '',
+      skills: event.skills || [],
+      participationStatus: 'Confirmed',
+      eventDate: event.availability?.[0] || '',
+      urgency: event.urgency || '1'
+    };
+    volunteer.history.push(historyEntry);
+
     // Send notification to volunteer for assignment
     notificationService.sendNotification(volunteer.uid, {
       type: 'assignment',
@@ -396,7 +413,18 @@ router.delete('/matches/:matchId', (req, res) => {
     }
 
     const deletedMatch = matches.splice(matchIndex, 1)[0];
-
+    
+    // 🔄 Update volunteer history status to "Unmatched"
+    if (deletedMatch?.volunteerId && deletedMatch?.eventId) {
+      const volunteer = profiles.volunteers.find(v => v.uid === deletedMatch.volunteerId);
+      if (volunteer?.history && Array.isArray(volunteer.history)) {
+        const entry = volunteer.history.find(h => h.eid === deletedMatch.eventId);
+        if (entry) {
+          entry.participationStatus = 'Unmatched';
+          entry.removedAt = new Date().toISOString(); // optional
+        }
+      }
+    }
     // Send notification to volunteer for removal
     if (deletedMatch && deletedMatch.volunteerId) {
       let eventName = deletedMatch.eventName;
