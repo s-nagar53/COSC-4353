@@ -1,59 +1,12 @@
-
-/*const express = require('express');
-const router = express.Router();
-const { profiles } = require('../data/memoryStore');
-const { validateProfile } = require('../utils/validateProfile');
-
-// Save profile
-router.post('/', (req, res) => {
-  const { uid, role, ...data } = req.body;
-
-  if (!uid || !role) {
-    return res.status(400).json({ message: 'Missing UID or role' });
-  }
-
-  const errors = validateProfile({ uid, ...data }, role);
-  if (errors.length > 0) {
-    return res.status(400).json({ message: 'Validation errors', errors });
-  }
-
-  const newProfile = { uid, role, ...data };
-
-  if (role === 'admin') {
-    profiles.admins = profiles.admins.filter(p => p.uid !== uid);
-    profiles.admins.push(newProfile);
-  } else {
-    profiles.volunteers = profiles.volunteers.filter(p => p.uid !== uid);
-    profiles.volunteers.push(newProfile);
-  }
-
-  res.status(200).json({ message: 'Profile saved successfully' });
-});
-
-// Get profile
-router.get('/:uid', (req, res) => {
-  const uid = req.params.uid;
-
-  const profile =
-    profiles.admins.find(p => p.uid === uid) ||
-    profiles.volunteers.find(p => p.uid === uid);
-
-  if (!profile) {
-    return res.status(404).json({ message: 'Profile not found' });
-  }
-
-  res.json(profile);
-});
-
-module.exports = router;
-*/
+const { db } = require('../firebase');
 const express = require('express');
 const router = express.Router();
-const { profiles } = require('../data/memoryStore');
+//const { profiles } = require('../data/memoryStore');
 const { validateProfile } = require('../utils/validateProfile');
 
 // Save profile (create or update)
-router.post('/', (req, res) => {
+// Save or update profile in Firestore
+router.post('/', async (req, res) => {
   const { uid, role, ...data } = req.body;
 
   if (!uid || !role) {
@@ -65,97 +18,82 @@ router.post('/', (req, res) => {
     return res.status(400).json({ message: 'Validation errors', errors });
   }
 
-  if (role === 'admin') {
-    profiles.admins = profiles.admins.filter(p => p.uid !== uid);
-    profiles.admins.push({ uid, role, ...data });
-  } else {
-    const existingProfile = profiles.volunteers.find(p => p.uid === uid);
-    const preservedHistory = existingProfile?.history || [];
+  const profileData = { uid, role, ...data };
 
-    const newProfile = {
-      uid,
-      role,
-      ...data,
-      history: preservedHistory
-    };
-
-    profiles.volunteers = profiles.volunteers.filter(p => p.uid !== uid);
-    profiles.volunteers.push(newProfile);
+  try {
+    await db.collection('users').doc(uid).set(profileData, { merge: true });
+    res.status(200).json({ message: 'Profile saved to Firestore' });
+  } catch (err) {
+    res.status(500).json({ message: 'Firestore error', error: err.message });
   }
-
-  res.status(200).json({ message: 'Profile saved successfully' });
 });
+
 
 // Add history to volunteer
-router.post('/:uid/history', (req, res) => {
+// Add event history to user profile in Firestore
+router.post('/:uid/history', async (req, res) => {
   const { uid } = req.params;
-  const {
-    eid,
-    eventname,
-    address,
-    city,
-    state,
-    zip,
-    skills,
-    requiredSkills,
-    urgency,
-    availability
-  } = req.body;
+  const newHistory = req.body;
 
-  const volunteer = profiles.volunteers.find(v => v.uid === uid);
-  if (!volunteer) {
-    return res.status(404).json({ message: 'Volunteer not found' });
+  try {
+    const userRef = db.collection('users').doc(uid);
+    const doc = await userRef.get();
+
+    if (!doc.exists) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const currentData = doc.data();
+    const updatedHistory = [...(currentData.history || []), newHistory];
+
+    await userRef.update({ history: updatedHistory });
+
+    res.status(200).json({ message: 'History added', history: updatedHistory });
+  } catch (err) {
+    res.status(500).json({ message: 'Firestore error', error: err.message });
   }
-
-  if (!volunteer.history) volunteer.history = [];
-
-  const newHistoryEntry = {
-    eid,
-    eventname,
-    address,
-    city,
-    state,
-    zip,
-    skills,
-    requiredSkills,
-    urgency,
-    availability
-  };
-
-  volunteer.history.push(newHistoryEntry);
-
-  res.status(200).json({ message: 'History added', history: volunteer.history });
 });
 
-// Get all volunteers with history
-router.get('/volunteer-history', (req, res) => {
-  const volunteerData = profiles.volunteers.map((v, i) => ({
-    id: i + 1,
-    uid: v.uid,
-    name: v.name,
-    email: v.email,
-    skills: v.skills || [],
-    totalEvents: v.history?.length || 0,
-    history: v.history || []
-  }));
 
-  res.status(200).json(volunteerData);
+// Get all volunteer profiles with history
+router.get('/volunteer-history', async (req, res) => {
+  try {
+    const snapshot = await db.collection('users').where('role', '==', 'volunteer').get();
+
+    const volunteers = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        uid: doc.id,
+        name: data.name,
+        email: data.email || '',
+        skills: data.skills || [],
+        totalEvents: data.history?.length || 0,
+        history: data.history || []
+      };
+    });
+
+    res.status(200).json(volunteers);
+  } catch (err) {
+    res.status(500).json({ message: 'Firestore error', error: err.message });
+  }
 });
 
-// Get profile by UID (admin or volunteer)
-router.get('/:uid', (req, res) => {
+
+
+// Get profile by UID from Firestore
+router.get('/:uid', async (req, res) => {
   const { uid } = req.params;
 
-  const profile =
-    profiles.admins.find(p => p.uid === uid) ||
-    profiles.volunteers.find(p => p.uid === uid);
+  try {
+    const doc = await db.collection('users').doc(uid).get();
+    if (!doc.exists) return res.status(404).json({ message: 'Profile not found' });
 
-  if (!profile) {
-    return res.status(404).json({ message: 'Profile not found' });
+    res.status(200).json(doc.data());
+  } catch (err) {
+    res.status(500).json({ message: 'Firestore error', error: err.message });
   }
-
-  res.json(profile);
 });
+
 
 module.exports = router;
 
