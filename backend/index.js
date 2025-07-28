@@ -1,47 +1,30 @@
 require('dotenv').config(); // Load variables from .env
-const admin = require('firebase-admin');
 const express = require('express');
 const cors = require('cors');
-const { profiles } = require('./data/memoryStore');
-const { events } = require('./data/memoryEvents');
-const volunteerMatchingRoutes = require('./routes/volunteerMatchingRoutes');
+// const { profiles } = require('./data/memoryStore');
+// const { events } = require('./data/memoryEvents');
 
 console.log('🔧 Starting backend...');
 
-// Load service account key from path in .env
-let firebaseAdminInitialized = false;
+// Import Firebase from your centralized firebase.js file
+// This will handle all Firebase initialization
+let admin, db, firebaseAdminInitialized;
 
 try {
-  const fs = require('fs');
-  const keyPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
-  
-  if (fs.existsSync(keyPath)) {
-    const serviceAccount = require(keyPath);
-    
-    // Check if it's a valid service account
-    
-    if (serviceAccount.private_key && serviceAccount.client_email && serviceAccount.project_id) {
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-      });
-      
-      firebaseAdminInitialized = true;
-      console.log('✅ Firebase Admin initialized');
-    }
-    else {
-      console.log('⚠️ Invalid service account key. Continuing without Firebase Admin...');
-    }
-  } else {
-    console.log('⚠️ Service account key file not found. Continuing without Firebase Admin...');
-  }
-} catch (err) {
-  console.error('⚠️ Could not initialize Firebase Admin:', err.message);
+  const firebase = require('./firebase');
+  admin = firebase.admin;
+  db = firebase.db;
+  firebaseAdminInitialized = true;
+  console.log('✅ Firebase imported from firebase.js');
+} catch (error) {
+  console.error('⚠️ Could not load Firebase:', error.message);
   console.log('⚠️ Continuing without Firebase Admin...');
+  firebaseAdminInitialized = false;
 }
 
 const app = express();
 
-// Middleware
+// Middleware - Move CORS before routes
 app.use(cors({
   origin: 'http://localhost:5173',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -59,33 +42,40 @@ app.use('/api/event', eventRoutes);
 const notificationRoutes = require('./routes/notificationRoutes');
 app.use('/api/notifications', notificationRoutes);
 
+const volunteerMatchingRoutes = require('./routes/volunteerMatchingRoutes');
 app.use('/api/matching', volunteerMatchingRoutes);
+
+const statesRoutes = require('./routes/statesRoutes');
+app.use('/api/states', statesRoutes);
 
 // Test route to verify backend is working
 app.get('/api/test', (req, res) => {
   res.json({ 
     message: 'Backend is running!', 
     firebaseAdmin: firebaseAdminInitialized,
-    profiles: Object.keys(profiles).length,
-    events: events.event ? events.event.length : 0
+    // profiles: profiles ? Object.keys(profiles).length : 0,
+    // events: events && events.event ? events.event.length : 0
   });
 });
 
-// route to check matching data (for debugging)
+// Route to check matching data (for debugging)
 app.get('/api/matching-data', (req, res) => {
+  // Uncomment when you have these data sources
   res.json({
-    volunteers: profiles.volunteers.map(v => ({
-      id: v.uid,
-      name: v.name,
-      city: v.city,
-      skills: v.skills
-    })),
-    events: events.event.map(e => ({
-      id: e.eid,
-      name: e.eventname,
-      city: e.city,
-      skills: e.skills
-    }))
+    message: 'Matching data endpoint',
+    firebaseConnected: firebaseAdminInitialized
+    // volunteers: profiles.volunteers.map(v => ({
+    //   id: v.uid,
+    //   name: v.name,
+    //   city: v.city,
+    //   skills: v.skills
+    // })),
+    // events: events.event.map(e => ({
+    //   id: e.eid,
+    //   name: e.eventname,
+    //   city: e.city,
+    //   skills: e.skills
+    // }))
   });
 });
 
@@ -93,7 +83,7 @@ app.get('/api/matching-data', (req, res) => {
 app.post('/set-role', async (req, res) => {
   console.log('🔥 /set-role HIT');
 
-  if (!firebaseAdminInitialized) {
+  if (!firebaseAdminInitialized || !admin) {
     return res.status(503).json({ 
       message: 'Firebase Admin not available - service account key needed' 
     });
@@ -125,17 +115,11 @@ app.post('/set-role', async (req, res) => {
 
 const PORT = 3001;
 
-//  Only start the server if NOT in test mode
+// Only start the server if NOT in test mode
 /* istanbul ignore next */
 if (process.env.NODE_ENV !== 'test') {
   app.listen(PORT, () => {
     console.log(`🚀 Backend running on http://localhost:${PORT}`);
-    console.log(`📊 Loaded ${Object.keys(profiles).reduce((total, key) => total + profiles[key].length, 0)} profiles`);
-    console.log(`📅 Loaded ${events.event ? events.event.length : 0} events`);
-
-    if (events.event && events.event.length > 0) {
-      console.log(`📋 Sample event: ${events.event[0].eid || 'No eid found'}`);
-    }
   });
 }
 
