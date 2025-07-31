@@ -15,13 +15,32 @@ jest.mock('../firebase', () => {
   const orderBy = jest.fn(() => ({ get }));
   const where = jest.fn(() => ({ orderBy }));
 
-  const collection = jest.fn(() => ({ orderBy, where }));
+  const collection = jest.fn((name) => {
+    return {
+      orderBy,
+      where,
+      get,
+      doc: jest.fn((code) => ({
+        get: jest.fn(() => {
+          const match = mockStates.find(
+            s => s.id.toLowerCase() === code.toLowerCase()
+          );
+          return Promise.resolve({
+            exists: !!match,
+            id: code.toLowerCase(),
+            data: () => match
+          });
+        })
+      }))
+    };
+  });
 
   return {
     db: { collection },
     __mockData: { mockStates }
   };
 });
+
 
 const { db, __mockData } = require('../firebase');
 
@@ -66,22 +85,12 @@ describe('State Routes', () => {
     db.collection = originalCollection;
   });
 
-/*  it('GET /api/state/region/invalid - returns 500 if Firestore throws', async () => {
-    const originalCollection = db.collection;
+ it('GET /api/states/tx - should return state by code', async () => {
+  const res = await request(app).get('/api/states/tx');
+  expect(res.statusCode).toBe(200);
+  expect(res.body).toBeDefined();
+  expect(res.body.id).toBe('tx');
+  expect(res.body.name).toBe('Texas');
+});
 
-    db.collection = jest.fn(() => ({
-      where: jest.fn(() => ({
-        orderBy: jest.fn(() => ({
-          get: jest.fn().mockRejectedValue(new Error('Firestore region error'))
-        }))
-      }))
-    }));
-
-    const res = await request(app).get('/api/states/region/west');
-    expect(res.statusCode).toBe(500);
-    expect(res.body.message).toBe('Failed to fetch states');
-
-    db.collection = originalCollection;
-  });
-  */
 });

@@ -1,15 +1,27 @@
+
 const mockDataStore = {
   u1: {
     uid: 'u1',
     name: 'Mock User',
+    city: 'Dallas',
+    state: 'TX',
     role: 'volunteer',
+    skills: ['packing', 'organizing'],
+    availability: ['2025-08-05'],
     history: []
-  }
+  },
+  
 };
 
 const mockEvents = [];
 const mockMatches = [];
 const mockStates = [];
+
+const mockFieldValue = {
+  arrayUnion: (...args) => ({
+    __arrayUnion__: args
+  })
+};
 
 const mockAuth = {
   verifyIdToken: jest.fn(),
@@ -17,8 +29,10 @@ const mockAuth = {
 };
 
 const mockAdmin = {
-  auth: () => mockAuth
+  auth: () => mockAuth,
+  firestore: () => ({ FieldValue: mockFieldValue })
 };
+mockAdmin.firestore.FieldValue = mockFieldValue;
 
 function createMockCollection(name) {
   let store;
@@ -26,7 +40,7 @@ function createMockCollection(name) {
   if (name === 'events') store = mockEvents;
   else if (name === 'matches') store = mockMatches;
   else if (name === 'states') store = mockStates;
-  else store = mockDataStore; // default to profiles
+  else store = mockDataStore;
 
   const makeSnapshot = (dataArray) => {
     const docs = dataArray.map((doc, i) => ({
@@ -39,9 +53,15 @@ function createMockCollection(name) {
     };
   };
 
-  const orderBy = jest.fn(() => ({
-    get: jest.fn(() => Promise.resolve(makeSnapshot(store)))
-  }));
+  const orderBy = jest.fn(() => query);
+  const limit = jest.fn(() => query);
+
+  const query = {
+    get: jest.fn(),
+    where: jest.fn(() => query),
+    orderBy,
+    limit
+  };
 
   return {
     doc: jest.fn((docId) => {
@@ -52,21 +72,14 @@ function createMockCollection(name) {
 
       return {
         get: jest.fn(() => {
-          if (Array.isArray(store)) {
-            const doc = store.find(e => e.eid === id || e.uid === id);
-            return Promise.resolve({
-              exists: !!doc,
-              id,
-              data: () => doc || null
-            });
-          } else {
-            const doc = store[id];
-            return Promise.resolve({
-              exists: !!doc,
-              id,
-              data: () => doc || null
-            });
-          }
+          const doc = Array.isArray(store)
+            ? store.find(e => e.eid === id || e.uid === id)
+            : store[id];
+          return Promise.resolve({
+            exists: !!doc,
+            id,
+            data: () => doc || null
+          });
         }),
         set: jest.fn((data) => {
           if (Array.isArray(store)) {
@@ -77,10 +90,10 @@ function createMockCollection(name) {
           return Promise.resolve();
         }),
         update: jest.fn((data) => {
-          if (Array.isArray(store)) {
-            if (index !== -1) store[index] = { ...store[index], ...data };
-          } else {
-            if (store[id]) store[id] = { ...store[id], ...data };
+          if (Array.isArray(store) && index !== -1) {
+            store[index] = { ...store[index], ...data };
+          } else if (store[id]) {
+            store[id] = { ...store[id], ...data };
           }
           return Promise.resolve();
         }),
@@ -95,43 +108,58 @@ function createMockCollection(name) {
       };
     }),
 
+    add: jest.fn(async (data) => {
+      const newDoc = { id: `match-${Date.now()}`, ...data };
+      mockMatches.push(newDoc);
+      return { id: newDoc.id };
+    }),
+
     get: jest.fn(() => {
       const docs = Array.isArray(store)
         ? store
         : Object.entries(store).map(([_, data]) => data);
-      return Promise.resolve(makeSnapshot(docs));
+      const snapshot = makeSnapshot(docs);
+      return Promise.resolve({
+        ...snapshot,
+        forEach: (cb) => snapshot.docs.forEach(cb)
+      });
     }),
 
-    orderBy, // ✅ support top-level .orderBy()
+    orderBy,
 
-    where: jest.fn(() => ({
-      get: jest.fn(() => {
-        if (name === 'profiles') {
-          const docs = Object.entries(mockDataStore)
-            .filter(([, data]) => data.role === 'volunteer')
-            .map(([id, data]) => ({
-              id,
-              data: () => data
-            }));
-          return Promise.resolve({
-            docs,
-            forEach: (cb) => docs.forEach(cb)
-          });
-        } else if (name === 'matches') {
-          const docs = mockMatches.map((doc, i) => ({
-            id: doc.eventId || `match-${i}`,
+    where: jest.fn((field, op, value) => {
+      let filteredDocs = [];
+
+      if (name === 'users') {
+        filteredDocs = Object.entries(mockDataStore)
+          .filter(([, data]) => data.role === 'volunteer')
+          .map(([id, data]) => ({
+            id,
+            data: () => data
+          }));
+      } else if (name === 'matches') {
+        filteredDocs = mockMatches
+          .filter(match => match[field] === value)
+          .map((doc, i) => ({
+            id: `match-${i}`,
             data: () => doc
           }));
-          return Promise.resolve({
-            docs,
-            forEach: (cb) => docs.forEach(cb)
-          });
-        } else {
-          return Promise.resolve({ docs: [], forEach: () => {} });
-        }
-      }),
-      orderBy // ✅ support chained .where(...).orderBy()
-    }))
+      }
+
+      const chainedQuery = {
+        docs: filteredDocs,
+        forEach: (cb) => filteredDocs.forEach(cb),
+        get: jest.fn(() => Promise.resolve({
+          docs: filteredDocs,
+          forEach: (cb) => filteredDocs.forEach(cb)
+        })),
+        where: jest.fn(() => chainedQuery),
+        orderBy: jest.fn(() => chainedQuery),
+        limit: jest.fn(() => chainedQuery)
+      };
+
+      return chainedQuery;
+    })
   };
 }
 

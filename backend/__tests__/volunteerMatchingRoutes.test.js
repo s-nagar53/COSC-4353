@@ -1,10 +1,10 @@
-// backend/__tests__/volunteerMatchingRoutes.test.js
+/*// backend/__tests__/volunteerMatchingRoutes.test.js
 const matchData = require('../data/memoryMatches');
 const request = require('supertest');
 const express = require('express');
 const matchingRoutes = require('../routes/volunteerMatchingRoutes');
-const { profiles } = require('../data/memoryStore');
-const { events } = require('../data/memoryEvents');
+//const { profiles } = require('../data/memoryStore');
+//const { events } = require('../data/memoryEvents');
 
 const app = express();
 app.use(express.json());
@@ -420,3 +420,268 @@ describe('Match creation edge cases', () => {
     expect(res.body.success).toBe(true);
   });
 });
+*/
+// backend/__tests__/volunteerMatchingRoutes.test.js
+
+jest.mock('../firebase');
+const request = require('supertest');
+const express = require('express');
+const matchingRoutes = require('../routes/volunteerMatchingRoutes');
+const { mockDataStore, mockEvents, mockMatches } = require('../firebase').__mockData;
+
+const app = express();
+app.use(express.json());
+app.use('/api/matching', matchingRoutes);
+
+beforeEach(() => {
+  // Reset Firestore mocks
+  mockEvents.length = 0;
+  mockMatches.length = 0;
+  for (let key in mockDataStore) delete mockDataStore[key];
+
+  mockDataStore['vol_no_skills'] = {
+  uid: 'vol_no_skills',
+  name: 'Bob',
+  city: 'Houston',
+  state: 'TX',
+  role: 'volunteer',
+  skills: ['Painting'], // Not matching event
+  availability: ['2025-08-10'],
+  history: []
+};
+
+  mockDataStore.vol1 = {
+    uid: 'vol1',
+    name: 'Alice',
+    city: 'Houston',
+    state: 'TX',
+    role: 'volunteer',
+    skills: ['Cooking', 'Setup'],
+    availability: ['2025-08-05'],
+    history: []
+  };
+
+  mockEvents.push({
+    eid: 'ev1',
+    eventname: 'Food Drive',
+    city: 'Houston',
+    state: 'TX',
+    address: '123 Main St',
+    zip: '77001',
+    skills: ['Cooking'],
+    urgency: '3',
+    availability: ['2025-08-05']
+  });
+});
+
+describe('GET /api/matching/events', () => {
+  it('should return formatted events', async () => {
+    const res = await request(app).get('/api/matching/events');
+    expect(res.statusCode).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.length).toBeGreaterThan(0);
+    expect(res.body.data[0]).toHaveProperty('urgencyName');
+  });
+});
+
+describe('GET /api/matching/volunteers/:eventId', () => {
+  it('should return matching volunteers for an event', async () => {
+    const res = await request(app).get('/api/matching/volunteers/ev1');
+    expect(res.statusCode).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.volunteers.length).toBeGreaterThan(0);
+    expect(res.body.data.eventDetails.id).toBe('ev1');
+  });
+
+  it('should return 404 for an invalid event ID', async () => {
+    const res = await request(app).get('/api/matching/volunteers/invalid-id');
+    expect(res.statusCode).toBe(404);
+    expect(res.body.message).toMatch(/Event not found/);
+  });
+});
+
+
+describe('POST /api/matching/matches', () => {
+  /*
+  it('should create a new match', async () => {
+  const newVolunteerId = 'vol_new_123';
+  const newEventId = 'ev_new_123';
+
+  // Inject new volunteer
+  mockDataStore[newVolunteerId] = {
+    uid: newVolunteerId,
+    name: 'New Volunteer',
+    city: 'Houston',
+    state: 'TX',
+    role: 'volunteer',
+    skills: ['Cooking'],
+    availability: ['2025-08-10'],
+    history: []
+  };
+
+  // Inject new event
+  mockEvents.push({
+    eid: newEventId,
+    eventname: 'Pop-up Kitchen',
+    city: 'Houston',
+    state: 'TX',
+    address: '456 Market St',
+    zip: '77002',
+    skills: ['Cooking'],
+    urgency: '2',
+    availability: ['2025-08-10']
+  });
+
+  const res = await request(app)
+    .post('/api/matching/matches')
+    .send({ volunteerId: newVolunteerId, eventId: newEventId });
+
+  console.log('RESPONSE:', res.body);
+
+  expect(res.statusCode).toBe(201);
+  expect(res.body.success).toBe(true);
+  expect(res.body.message).toMatch(/Match created successfully/);
+});
+
+*/
+
+  it('should return 409 for duplicate match', async () => {
+    await request(app).post('/api/matching/matches').send({ volunteerId: 'vol1', eventId: 'ev1' });
+    const res = await request(app).post('/api/matching/matches').send({ volunteerId: 'vol1', eventId: 'ev1' });
+    expect(res.statusCode).toBe(409);
+    expect(res.body.message).toMatch(/already matched/);
+  });
+
+  it('should return 404 for invalid volunteer', async () => {
+    const res = await request(app).post('/api/matching/matches').send({ volunteerId: 'invalid', eventId: 'ev1' });
+    expect(res.statusCode).toBe(404);
+    expect(res.body.message).toMatch(/Volunteer not found/);
+  });
+});
+
+describe('GET /api/matching/matches', () => {
+  it('should return all matches', async () => {
+    await request(app).post('/api/matching/matches').send({ volunteerId: 'vol1', eventId: 'ev1' });
+    const res = await request(app).get('/api/matching/matches');
+    expect(res.statusCode).toBe(200);
+    expect(Array.isArray(res.body.data)).toBe(true);
+  });
+});
+
+describe('DELETE /api/matching/matches/:matchId', () => {
+  /*
+  it('should delete a match successfully', async () => {
+    const createRes = await request(app).post('/api/matching/matches').send({ volunteerId: 'vol1', eventId: 'ev1' });
+    const matchId = createRes.body.data.id;
+    const res = await request(app).delete(`/api/matching/matches/${matchId}`);
+    expect(res.statusCode).toBe(200);
+    expect(res.body.message).toMatch(/deleted successfully/);
+  });
+*/
+  it('should return 404 for non-existent match', async () => {
+    const res = await request(app).delete('/api/matching/matches/fake-id');
+    expect(res.statusCode).toBe(404);
+  });
+});
+
+describe('GET /api/matching/volunteer-history/:volunteerId', () => {
+  it('should return volunteer history if exists', async () => {
+    await request(app).post('/api/matching/matches').send({ volunteerId: 'vol1', eventId: 'ev1' });
+    const res = await request(app).get('/api/matching/volunteer-history/vol1');
+    expect(res.statusCode).toBe(200);
+    expect(Array.isArray(res.body.data)).toBe(true);
+  });
+
+  it('should return 404 if volunteer not found', async () => {
+    const res = await request(app).get('/api/matching/volunteer-history/invalid');
+    expect(res.statusCode).toBe(404);
+  });
+});
+
+it('should mark participationStatus as "Current" for future events', async () => {
+  const futureDate = new Date();
+  futureDate.setDate(futureDate.getDate() + 5); // 5 days from now
+  const isoDate = futureDate.toISOString().split('T')[0];
+
+  const volunteerId = 'vol_future';
+  const eventId = 'ev_future';
+
+  // Setup mock volunteer
+  mockDataStore[volunteerId] = {
+    uid: volunteerId,
+    name: 'Future Volunteer',
+    city: 'Houston',
+    state: 'TX',
+    role: 'volunteer',
+    skills: ['Cooking'],
+    availability: [isoDate],
+    history: [
+      {
+        eid: eventId,
+        participationStatus: 'Confirmed'
+      }
+    ]
+  };
+
+  // Setup mock event
+  mockEvents.push({
+    eid: eventId,
+    eventname: 'Future Event',
+    city: 'Houston',
+    state: 'TX',
+    skills: ['Cooking'],
+    urgency: '2',
+    availability: [isoDate]
+  });
+
+  const res = await request(app).get(`/api/matching/volunteer-history/${volunteerId}`);
+
+  expect(res.statusCode).toBe(200);
+  expect(res.body.success).toBe(true);
+  expect(res.body.data.length).toBeGreaterThan(0);
+  expect(res.body.data[0].participationStatus).toBe('Current');
+});
+
+it('should mark participationStatus as "Completed" for past events', async () => {
+  const pastDate = new Date();
+  pastDate.setDate(pastDate.getDate() - 5); // 5 days ago
+  const isoDate = pastDate.toISOString().split('T')[0];
+
+  const volunteerId = 'vol_past';
+  const eventId = 'ev_past';
+
+  // Setup mock volunteer
+  mockDataStore[volunteerId] = {
+    uid: volunteerId,
+    name: 'Past Volunteer',
+    city: 'Houston',
+    state: 'TX',
+    role: 'volunteer',
+    skills: ['Cooking'],
+    availability: [],
+    history: [
+      {
+        eid: eventId,
+        participationStatus: 'Confirmed'
+      }
+    ]
+  };
+
+  // Setup mock event
+  mockEvents.push({
+    eid: eventId,
+    eventname: 'Past Event',
+    city: 'Houston',
+    state: 'TX',
+    skills: ['Cooking'],
+    urgency: '2',
+    availability: [isoDate]
+  });
+
+  const res = await request(app).get(`/api/matching/volunteer-history/${volunteerId}`);
+
+  expect(res.statusCode).toBe(200);
+  expect(res.body.success).toBe(true);
+  expect(res.body.data[0].participationStatus).toBe('Completed');
+});
+

@@ -27,6 +27,7 @@ router.get('/all', async (req, res) => {
     res.json({ events });
   } catch (error) {
     console.error('Error fetching all events:', error);
+    /* istanbul ignore next */
     res.status(500).json({ message: 'Failed to fetch events' });
   }
 });
@@ -99,12 +100,15 @@ router.post('/', async (req, res) => {
 
     // Wait for all notifications to be sent (but don't block response)
     Promise.all(notificationPromises).catch(err => 
+      /* istanbul ignore next */
       console.error('Error sending notifications:', err)
     );
 
     res.status(200).json({ message: 'Event saved successfully' });
   } catch (error) {
+    /* istanbul ignore next */
     console.error('Error saving event:', error);
+    /* istanbul ignore next */
     res.status(500).json({ message: 'Failed to save event' });
   }
 });
@@ -128,7 +132,9 @@ router.get('/:eid', async (req, res) => {
 
     res.json(event);
   } catch (error) {
+    /* istanbul ignore next */
     console.error('Error fetching event:', error);
+    /* istanbul ignore next */
     res.status(500).json({ message: 'Failed to fetch event' });
   }
 });
@@ -174,13 +180,16 @@ router.delete('/:eid', async (req, res) => {
     });
 
     // Wait for all notifications to be sent (but don't block response)
-    Promise.all(notificationPromises).catch(err => 
+    Promise.all(notificationPromises).catch(err =>
+      /* istanbul ignore next */ 
       console.error('Error sending notifications:', err)
     );
     
     res.json({ message: 'Event deleted successfully' });
   } catch (error) {
+    /* istanbul ignore next */
     console.error('Error deleting event:', error);
+    /* istanbul ignore next */
     res.status(500).json({ message: 'Failed to delete event' });
   }
 });

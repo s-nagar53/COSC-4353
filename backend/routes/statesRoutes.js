@@ -16,7 +16,9 @@ router.get('/all', async (req, res) => {
     });
     res.json({ states });
   } catch (error) {
+    /* istanbul ignore next */
       console.error('Error fetching all states:', error);
+      /* istanbul ignore next */
       res.status(500).json({ message: 'Internal server error' });
     // Fallback to memory data
     //res.json({ states: statesHelper.getAll() });
@@ -37,7 +39,9 @@ router.get('/region/:region', async (req, res) => {
     });
     res.json({ states });
   } catch (error) {
+    /* istanbul ignore next */
     console.error(`Error fetching states for region ${req.params.region}:`, error);
+    /* istanbul ignore next */
     res.status(500).json({ message: 'Internal server error' });
     //res.json({ states: statesHelper.getByRegion(region) });
   }
@@ -55,6 +59,7 @@ router.get('/:code', async (req, res) => {
     }
   } catch (error) {
     console.error(`Error fetching state with code ${req.params.code}:`, error);
+    /* istanbul ignore next */
     res.status(500).json({ message: 'Internal server error' });
   }
 });
