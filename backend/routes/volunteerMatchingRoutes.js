@@ -190,7 +190,7 @@ router.get('/volunteers/:eventId', (req, res) => {
 
 // POST /api/matching/matches
 // Create a new volunteer-event match
-router.post('/matches', (req, res) => {
+router.post('/matches', async (req, res) => {
   try {
     const { volunteerId, eventId } = req.body;
 
@@ -342,16 +342,21 @@ router.post('/matches', (req, res) => {
 
 
     // Send notification to volunteer for assignment
-    notificationService.sendNotification(volunteer.uid, {
-      type: 'assignment',
-      message: `You have been assigned to the event: ${event.eventname}`,
-      data: {
-        eventId: event.eid,
-        eventName: event.eventname,
-        date: event.availability && event.availability[0] ? new Date(event.availability[0]).toISOString().split('T')[0] : 'TBD',
-        city: event.city
-      }
-    });
+    try {
+      await notificationService.sendNotification(volunteer.uid, {
+        type: 'assignment',
+        message: `You have been assigned to the event: ${event.eventname}`,
+        data: {
+          eventId: event.eid,
+          eventName: event.eventname,
+          date: event.availability && event.availability[0] ? new Date(event.availability[0]).toISOString().split('T')[0] : 'TBD',
+          city: event.city
+        }
+      });
+    } catch (notificationError) {
+      console.error('Failed to send notification:', notificationError);
+      // Continue with the response even if notification fails
+    }
 
 
     res.status(201).json({
@@ -418,7 +423,7 @@ router.get('/matches', (req, res) => {
 
 // DELETE /api/matching/matches/:matchId
 // Delete a specific match
-router.delete('/matches/:matchId', (req, res) => {
+router.delete('/matches/:matchId', async (req, res) => {
   try {
     const { matchId } = req.params;
     const matchIndex = matches.findIndex(m => m.id === parseInt(matchId));
@@ -451,14 +456,19 @@ router.delete('/matches/:matchId', (req, res) => {
         const event = events.event.find(e => e.eid === deletedMatch.eventId);
         eventName = event ? event.eventname : 'the event';
       }
-      notificationService.sendNotification(deletedMatch.volunteerId, {
-        type: 'removed',
-        message: `You have been removed from the event: ${eventName}`,
-        data: {
-          eventId: deletedMatch.eventId,
-          eventName: eventName,
-        }
-      });
+      try {
+        await notificationService.sendNotification(deletedMatch.volunteerId, {
+          type: 'removed',
+          message: `You have been removed from the event: ${eventName}`,
+          data: {
+            eventId: deletedMatch.eventId,
+            eventName: eventName,
+          }
+        });
+      } catch (notificationError) {
+        console.error('Failed to send removal notification:', notificationError);
+        // Continue with the response even if notification fails
+      }
     }
 
     res.json({
@@ -597,32 +607,39 @@ router.get('/event-stats/:eventId', (req, res) => {
 
 // POST /api/matching/reminder
 // Body: { volunteerId, eventId, message }
-router.post('/reminder', (req, res) => {
-  const { volunteerId, eventId, message } = req.body;
-  if (!volunteerId || !eventId || !message) {
-    return res.status(400).json({ success: false, message: 'volunteerId, eventId, and message are required' });
-  }
-  const event = events.event.find(e => e.eid === eventId);
-  if (!event) {
-    return res.status(404).json({ success: false, message: 'Event not found' });
-  }
-  notificationService.sendNotification(volunteerId, {
-    type: 'reminder',
-    message,
-    data: {
-      eventId: event.eid,
-      eventName: event.eventname,
-      date: event.availability && event.availability[0] ? new Date(event.availability[0]).toISOString().split('T')[0] : 'TBD',
-      city: event.city
+router.post('/reminder', async (req, res) => {
+  try {
+    const { volunteerId, eventId, message } = req.body;
+    if (!volunteerId || !eventId || !message) {
+      return res.status(400).json({ success: false, message: 'volunteerId, eventId, and message are required' });
     }
-  });
-  res.status(201).json({ success: true, message: 'Reminder notification sent' });
+    const event = events.event.find(e => e.eid === eventId);
+    if (!event) {
+      return res.status(404).json({ success: false, message: 'Event not found' });
+    }
+    
+    await notificationService.sendNotification(volunteerId, {
+      type: 'reminder',
+      message,
+      data: {
+        eventId: event.eid,
+        eventName: event.eventname,
+        date: event.availability && event.availability[0] ? new Date(event.availability[0]).toISOString().split('T')[0] : 'TBD',
+        city: event.city
+      }
+    });
+    
+    res.status(201).json({ success: true, message: 'Reminder notification sent' });
+  } catch (error) {
+    console.error('Error sending reminder notification:', error);
+    res.status(500).json({ success: false, message: 'Failed to send reminder notification', error: error.message });
+  }
 });
 
 // GET /api/matching/match-notifications
-router.get('/match-notifications', (req, res) => {
+router.get('/match-notifications', async (req, res) => {
   try {
-    const notificationsMap = NotificationAggregator.getMatchNotifications();
+    const notificationsMap = await NotificationAggregator.getMatchNotifications();
     res.json({ success: true, notifications: notificationsMap });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Failed to aggregate notifications', error: error.message });
@@ -634,11 +651,17 @@ router.get('/match-notifications', (req, res) => {
 router.get('/volunteer-history/:volunteerId', (req, res) => {
   try {
     const { volunteerId } = req.params;
+    console.log(`📊 Fetching event history for volunteer: ${volunteerId}`);
+    
     // Find all matches for this volunteer
     const volunteerMatches = matches.filter(m => m.volunteerId === volunteerId);
+    console.log(`📊 Found ${volunteerMatches.length} matches for volunteer ${volunteerId}`);
+    
     // For each match, get the event details
     const eventHistory = volunteerMatches.map(match => {
       const event = events.event.find(e => e.eid === match.eventId);
+      console.log(`📊 Match ${match.id}: eventId=${match.eventId}, found event: ${event ? event.eventname : 'NOT FOUND'}`);
+      
       // Determine if this is the current event (active and event date is today or in the future)
       let participationStatus = 'Removed';
       if (match.status === 'active' && event?.availability?.length > 0) {
@@ -666,8 +689,11 @@ router.get('/volunteer-history/:volunteerId', (req, res) => {
         createdAt: match.createdAt || '',
       };
     });
+    
+    console.log(`📊 Returning ${eventHistory.length} events in history for volunteer ${volunteerId}`);
     res.json({ success: true, data: eventHistory });
   } catch (error) {
+    console.error('Error fetching volunteer history:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch event history', error: error.message });
   }
 });

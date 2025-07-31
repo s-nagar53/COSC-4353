@@ -3,10 +3,31 @@ const router = express.Router();
 const { db } = require('../firebase'); // Import Firestore
 const { validateEvent } = require('../utils/validateEvent');
 const notificationService = require('../utils/notificationService');
+const matchData = require('../data/memoryMatches');
+const { events } = require('../data/memoryEvents');
 
 // Firestore collection reference
 const eventsCollection = db.collection('events');
-const matchesCollection = db.collection('matches');
+
+// Sync Firestore events to in-memory events
+async function syncEventsToMemory() {
+  try {
+    const snapshot = await eventsCollection.get();
+    events.event = [];
+    snapshot.forEach(doc => {
+      events.event.push({
+        id: doc.id,
+        ...doc.data()
+      });
+    });
+    console.log(`✅ Synced ${events.event.length} events from Firestore to memory`);
+  } catch (error) {
+    console.error('❌ Error syncing events to memory:', error);
+  }
+}
+
+// Sync events on startup
+syncEventsToMemory();
 
 // Get all events (MUST come before /:eid)
 router.get('/all', async (req, res) => {
@@ -69,19 +90,29 @@ router.post('/', async (req, res) => {
       // Update existing event (preserve createdAt)
       delete eventData.createdAt;
       await eventRef.update(eventData);
+      
+      // Also update in-memory events for volunteer matching
+      const existingIndex = events.event.findIndex(e => e.eid === eid);
+      if (existingIndex !== -1) {
+        events.event[existingIndex] = { ...events.event[existingIndex], ...eventData };
+      }
     } else {
       // Create new event
       await eventRef.set(eventData);
+      
+      // Also add to in-memory events for volunteer matching
+      events.event.push(eventData);
     }
 
     // Notify all matched volunteers for this event about the update
-    const matchesSnapshot = await matchesCollection
-      .where('eventId', '==', eid)
-      .get();
+    const matchesSnapshot = await matchData.getMatchesByEventId(eid);
+    
+    console.log(`📢 Found ${matchesSnapshot.length} matched volunteers for event ${eid}`);
+    console.log(`📢 Event updated: ${eventData.eventname} (${eid})`);
     
     const notificationPromises = [];
-    matchesSnapshot.forEach(doc => {
-      const match = doc.data();
+    matchesSnapshot.forEach(match => {
+      console.log(`📢 Sending update notification to volunteer ${match.volunteerId} for event ${eid}`);
       notificationPromises.push(
         notificationService.sendNotification(match.volunteerId, {
           type: 'event_update',
@@ -93,6 +124,8 @@ router.post('/', async (req, res) => {
               new Date(eventData.availability[0]).toISOString().split('T')[0] : 'TBD',
             city: eventData.city
           }
+        }).catch(err => {
+          console.error(`Failed to send notification to volunteer ${match.volunteerId}:`, err);
         })
       );
     });
@@ -152,16 +185,22 @@ router.delete('/:eid', async (req, res) => {
     // Delete the event
     await eventRef.delete();
     
+    // Also remove from in-memory events for volunteer matching
+    const existingIndex = events.event.findIndex(e => e.eid === eid);
+    if (existingIndex !== -1) {
+      events.event.splice(existingIndex, 1);
+    }
+    
     console.log('✅ Event deleted:', eid);
     
     // Notify all matched volunteers for this event about the cancellation
-    const matchesSnapshot = await matchesCollection
-      .where('eventId', '==', eid)
-      .get();
+    const matchesSnapshot = await matchData.getMatchesByEventId(eid);
+    
+    console.log(`📢 Found ${matchesSnapshot.length} matched volunteers for cancelled event ${eid}`);
     
     const notificationPromises = [];
-    matchesSnapshot.forEach(doc => {
-      const match = doc.data();
+    matchesSnapshot.forEach(match => {
+      console.log(`📢 Sending cancellation notification to volunteer ${match.volunteerId} for event ${eid}`);
       notificationPromises.push(
         notificationService.sendNotification(match.volunteerId, {
           type: 'event_cancelled',
@@ -169,6 +208,8 @@ router.delete('/:eid', async (req, res) => {
           data: {
             eventId: eid
           }
+        }).catch(err => {
+          console.error(`Failed to send cancellation notification to volunteer ${match.volunteerId}:`, err);
         })
       );
     });

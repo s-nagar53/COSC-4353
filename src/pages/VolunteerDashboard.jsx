@@ -14,18 +14,59 @@ function VolunteerDashboard({ user }) {
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [eventHistory, setEventHistory] = useState([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  useEffect(() => {
+  const fetchNotifications = () => {
     if (user?.uid) {
-      api.get(`/notifications/${user.uid}`)
-        .then(res => setNotifications(res.data.notifications))
+      return api.get(`/notifications/${user.uid}`)
+        .then(res => {
+          setNotifications(res.data.notifications);
+        })
         .catch(() => setNotifications([]));
-      // Fetch event history
-      api.get(`/matching/volunteer-history/${user.uid}`)
+    }
+  };
+
+  const fetchEventHistory = () => {
+    if (user?.uid) {
+      return api.get(`/matching/volunteer-history/${user.uid}`)
         .then(res => setEventHistory(res.data.data || []))
         .catch(() => setEventHistory([]));
     }
+  };
+
+  useEffect(() => {
+    if (user?.uid) {
+      fetchNotifications();
+      fetchEventHistory();
+    }
   }, [user]);
+
+  const handleRefreshNotifications = async () => {
+    setIsRefreshing(true);
+    try {
+      await fetchNotifications();
+    } catch (error) {
+      console.error('Failed to refresh notifications:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const handleClearNotification = async (notification) => {
+    try {
+      // Call the backend API to delete the notification from Firestore
+      await api.delete(`/notifications/${notification.id}`);
+      
+      // Remove the notification from the local state
+      const updatedNotifications = notifications.filter(notif => notif.id !== notification.id);
+      setNotifications(updatedNotifications);
+      
+      console.log('✅ Notification deleted successfully');
+    } catch (error) {
+      console.error('Failed to clear notification:', error);
+      // Optionally show an error message to the user
+    }
+  };
 
   const handleEditProfile = () => {
     navigate('/profile');
@@ -67,6 +108,14 @@ function VolunteerDashboard({ user }) {
       minHeight: '100vh',
       padding: '2rem'
     }}>
+      <style>
+        {`
+          @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+          }
+        `}
+      </style>
       {/* Header with buttons */}
       <div style={{
         display: 'flex',
@@ -181,17 +230,65 @@ function VolunteerDashboard({ user }) {
           flexGrow: 1
         }}>
           <div className="form-group">
-            <h2 style={{ 
-              marginBottom: '1.5rem', 
-              fontSize: '1.5rem', 
-              color: '#000',
-              fontWeight: 'bold',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem'
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              marginBottom: '1.5rem',
+              gap: '1rem'
             }}>
-              📢 Notifications
-            </h2>
+              <h2 style={{ 
+                fontSize: '1.5rem', 
+                color: '#000',
+                fontWeight: 'bold',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                margin: 0,
+                flex: 1
+              }}>
+                📢 Notifications
+              </h2>
+              <button 
+                onClick={handleRefreshNotifications}
+                style={{
+                  padding: '0.5rem',
+                  backgroundColor: '#4f46e5',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '50%',
+                  cursor: 'pointer',
+                  fontSize: '1rem',
+                  fontWeight: '600',
+                  boxShadow: '0 4px 15px rgba(79, 70, 229, 0.3)',
+                  transition: 'all 0.3s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '40px',
+                  height: '40px',
+                  minWidth: '40px',
+                  flexShrink: 0
+                }}
+                onMouseOver={(e) => {
+                  e.target.style.transform = 'translateY(-2px)';
+                  e.target.style.boxShadow = '0 6px 20px rgba(79, 70, 229, 0.4)';
+                }}
+                onMouseOut={(e) => {
+                  e.target.style.transform = 'translateY(0)';
+                  e.target.style.boxShadow = '0 4px 15px rgba(79, 70, 229, 0.3)';
+                }}
+                disabled={isRefreshing}
+                title="Refresh notifications"
+              >
+                <span style={{ 
+                  animation: isRefreshing ? 'spin 1s linear infinite' : 'none',
+                  fontSize: '1.2rem'
+                }}>
+                  🔄
+                </span>
+              </button>
+            </div>
             {sortedNotifications.length === 0 ? (
               <div style={{
                 background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)',
@@ -233,6 +330,36 @@ function VolunteerDashboard({ user }) {
                           {notif.timestamp ? new Date(notif.timestamp).toLocaleDateString() : ''}
                         </div>
                       </div>
+                      <button
+                        onClick={() => handleClearNotification(notif)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#999',
+                          fontSize: '1.2rem',
+                          cursor: 'pointer',
+                          padding: '0.25rem',
+                          borderRadius: '50%',
+                          width: '28px',
+                          height: '28px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          transition: 'all 0.2s ease',
+                          marginLeft: '0.5rem'
+                        }}
+                        onMouseOver={(e) => {
+                          e.target.style.backgroundColor = '#f8d7da';
+                          e.target.style.color = '#dc3545';
+                        }}
+                        onMouseOut={(e) => {
+                          e.target.style.backgroundColor = 'transparent';
+                          e.target.style.color = '#999';
+                        }}
+                        title="Clear notification"
+                      >
+                        ✕
+                      </button>
                     </div>
                   </li>
                 ))}
