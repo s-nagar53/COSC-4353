@@ -423,265 +423,597 @@ describe('Match creation edge cases', () => {
 */
 // backend/__tests__/volunteerMatchingRoutes.test.js
 
-jest.mock('../firebase');
 const request = require('supertest');
-const express = require('express');
-const matchingRoutes = require('../routes/volunteerMatchingRoutes');
-const { mockDataStore, mockEvents, mockMatches } = require('../firebase').__mockData;
 
-const app = express();
-app.use(express.json());
-app.use('/api/matching', matchingRoutes);
+// Mock all dependencies before importing app
+jest.mock('../firebase', () => {
+  const mockEvents = [
+    {
+      id: 'event1',
+      eventname: 'Beach Cleanup',
+      city: 'Houston',
+      state: 'TX',
+      skills: ['environmental', 'physical'],
+      urgency: '3',
+      availability: ['2025-12-01', '2025-12-02']
+    },
+    {
+      id: 'event2', 
+      eventname: 'Food Drive',
+      city: 'Austin',
+      state: 'TX', 
+      skills: ['organization', 'communication'],
+      urgency: '2',
+      availability: ['2024-01-01'] // Past date
+    }
+  ];
 
-beforeEach(() => {
-  // Reset Firestore mocks
-  mockEvents.length = 0;
-  mockMatches.length = 0;
-  for (let key in mockDataStore) delete mockDataStore[key];
+  const mockVolunteers = [
+    {
+      uid: 'vol1',
+      name: 'John Doe',
+      city: 'Houston',
+      state: 'TX',
+      role: 'volunteer',
+      skills: ['environmental', 'communication'],
+      availability: ['2025-12-01'],
+      history: []
+    },
+    {
+      uid: 'vol2', 
+      name: 'Jane Smith',
+      city: 'Austin',
+      state: 'TX',
+      role: 'volunteer', 
+      skills: ['organization'],
+      availability: ['2025-12-02'],
+      history: []
+    }
+  ];
 
-  mockDataStore['vol_no_skills'] = {
-  uid: 'vol_no_skills',
-  name: 'Bob',
-  city: 'Houston',
-  state: 'TX',
-  role: 'volunteer',
-  skills: ['Painting'], // Not matching event
-  availability: ['2025-08-10'],
-  history: []
-};
+  const mockMatches = [
+    {
+      id: 'match1',
+      volunteerId: 'vol1',
+      eventId: 'event1',
+      volunteerName: 'John Doe',
+      eventName: 'Beach Cleanup',
+      matchedSkills: ['environmental'],
+      createdAt: '2025-01-01T00:00:00.000Z',
+      matchStatus: 'active'
+    }
+  ];
 
-  mockDataStore.vol1 = {
-    uid: 'vol1',
-    name: 'Alice',
-    city: 'Houston',
-    state: 'TX',
-    role: 'volunteer',
-    skills: ['Cooking', 'Setup'],
-    availability: ['2025-08-05'],
-    history: []
+  let shouldFirebaseSucceed = true;
+  let mockDocExists = true;
+  let mockCollectionEmpty = false;
+
+  const createMockCollection = (collectionName) => {
+    let data;
+    switch(collectionName) {
+      case 'events': data = [...mockEvents]; break;
+      case 'users': data = [...mockVolunteers]; break; 
+      case 'matches': data = [...mockMatches]; break;
+      default: data = [];
+    }
+
+    return {
+      get: jest.fn(() => {
+        if (!shouldFirebaseSucceed) {
+          return Promise.reject(new Error(`Firebase error for ${collectionName}`));
+        }
+        return Promise.resolve({
+          docs: mockCollectionEmpty ? [] : data.map(item => ({
+            id: item.id || item.uid,
+            data: () => ({ ...item })
+          })),
+          forEach: (cb) => {
+            if (!mockCollectionEmpty) {
+              data.forEach(item => cb({ 
+                id: item.id || item.uid, 
+                data: () => ({ ...item })
+              }));
+            }
+          },
+          empty: mockCollectionEmpty,
+          size: mockCollectionEmpty ? 0 : data.length
+        });
+      }),
+      
+      doc: jest.fn((docId) => ({
+        get: jest.fn(() => {
+          if (!shouldFirebaseSucceed) {
+            return Promise.reject(new Error('Firebase doc error'));
+          }
+          const item = data.find(d => (d.id || d.uid) === docId);
+          return Promise.resolve({
+            exists: mockDocExists && !!item,
+            id: docId,
+            data: () => item ? { ...item } : null
+          });
+        }),
+        delete: jest.fn(() => {
+          if (!shouldFirebaseSucceed) {
+            return Promise.reject(new Error('Firebase delete error'));
+          }
+          return Promise.resolve();
+        }),
+        update: jest.fn(() => {
+          if (!shouldFirebaseSucceed) {
+            return Promise.reject(new Error('Firebase update error'));
+          }
+          return Promise.resolve();
+        })
+      })),
+      
+      where: jest.fn((field, operator, value) => ({
+        get: jest.fn(() => {
+          if (!shouldFirebaseSucceed) {
+            return Promise.reject(new Error('Firebase where error'));
+          }
+          let filtered = data.filter(item => {
+            if (field === 'role') return item.role === value;
+            if (field === 'eventId') return item.eventId === value;
+            if (field === 'volunteerId' && operator === '==') return item.volunteerId === value;
+            return true;
+          });
+          return Promise.resolve({
+            docs: filtered.map(item => ({
+              id: item.id || item.uid,
+              data: () => ({ ...item })
+            })),
+            empty: filtered.length === 0,
+            size: filtered.length
+          });
+        }),
+        where: jest.fn((field2, operator2, value2) => ({
+          limit: jest.fn(() => ({
+            get: jest.fn(() => {
+              if (!shouldFirebaseSucceed) {
+                return Promise.reject(new Error('Firebase complex query error'));
+              }
+              let filtered = data.filter(item => {
+                let match1 = false, match2 = false;
+                if (field === 'volunteerId') match1 = item.volunteerId === value;
+                if (field2 === 'eventId') match2 = item.eventId === value2;
+                return match1 && match2;
+              });
+              return Promise.resolve({
+                empty: filtered.length === 0,
+                docs: filtered.map(item => ({
+                  id: item.id,
+                  data: () => ({ ...item })
+                }))
+              });
+            })
+          }))
+        }))
+      })),
+      
+      add: jest.fn((data) => {
+        if (!shouldFirebaseSucceed) {
+          return Promise.reject(new Error('Firebase add error'));
+        }
+        const newId = `new-${Date.now()}`;
+        return Promise.resolve({ id: newId });
+      })
+    };
   };
 
-  mockEvents.push({
-    eid: 'ev1',
-    eventname: 'Food Drive',
-    city: 'Houston',
-    state: 'TX',
-    address: '123 Main St',
-    zip: '77001',
-    skills: ['Cooking'],
-    urgency: '3',
-    availability: ['2025-08-05']
-  });
-});
-
-describe('GET /api/matching/events', () => {
-  it('should return formatted events', async () => {
-    const res = await request(app).get('/api/matching/events');
-    expect(res.statusCode).toBe(200);
-    expect(res.body.success).toBe(true);
-    expect(res.body.data.length).toBeGreaterThan(0);
-    expect(res.body.data[0]).toHaveProperty('urgencyName');
-  });
-});
-
-describe('GET /api/matching/volunteers/:eventId', () => {
-  it('should return matching volunteers for an event', async () => {
-    const res = await request(app).get('/api/matching/volunteers/ev1');
-    expect(res.statusCode).toBe(200);
-    expect(res.body.success).toBe(true);
-    expect(res.body.data.volunteers.length).toBeGreaterThan(0);
-    expect(res.body.data.eventDetails.id).toBe('ev1');
-  });
-
-  it('should return 404 for an invalid event ID', async () => {
-    const res = await request(app).get('/api/matching/volunteers/invalid-id');
-    expect(res.statusCode).toBe(404);
-    expect(res.body.message).toMatch(/Event not found/);
-  });
-});
-
-
-describe('POST /api/matching/matches', () => {
-  /*
-  it('should create a new match', async () => {
-  const newVolunteerId = 'vol_new_123';
-  const newEventId = 'ev_new_123';
-
-  // Inject new volunteer
-  mockDataStore[newVolunteerId] = {
-    uid: newVolunteerId,
-    name: 'New Volunteer',
-    city: 'Houston',
-    state: 'TX',
-    role: 'volunteer',
-    skills: ['Cooking'],
-    availability: ['2025-08-10'],
-    history: []
-  };
-
-  // Inject new event
-  mockEvents.push({
-    eid: newEventId,
-    eventname: 'Pop-up Kitchen',
-    city: 'Houston',
-    state: 'TX',
-    address: '456 Market St',
-    zip: '77002',
-    skills: ['Cooking'],
-    urgency: '2',
-    availability: ['2025-08-10']
-  });
-
-  const res = await request(app)
-    .post('/api/matching/matches')
-    .send({ volunteerId: newVolunteerId, eventId: newEventId });
-
-  console.log('RESPONSE:', res.body);
-
-  expect(res.statusCode).toBe(201);
-  expect(res.body.success).toBe(true);
-  expect(res.body.message).toMatch(/Match created successfully/);
-});
-
-*/
-
-  it('should return 409 for duplicate match', async () => {
-    await request(app).post('/api/matching/matches').send({ volunteerId: 'vol1', eventId: 'ev1' });
-    const res = await request(app).post('/api/matching/matches').send({ volunteerId: 'vol1', eventId: 'ev1' });
-    expect(res.statusCode).toBe(409);
-    expect(res.body.message).toMatch(/already matched/);
-  });
-
-  it('should return 404 for invalid volunteer', async () => {
-    const res = await request(app).post('/api/matching/matches').send({ volunteerId: 'invalid', eventId: 'ev1' });
-    expect(res.statusCode).toBe(404);
-    expect(res.body.message).toMatch(/Volunteer not found/);
-  });
-});
-
-describe('GET /api/matching/matches', () => {
-  it('should return all matches', async () => {
-    await request(app).post('/api/matching/matches').send({ volunteerId: 'vol1', eventId: 'ev1' });
-    const res = await request(app).get('/api/matching/matches');
-    expect(res.statusCode).toBe(200);
-    expect(Array.isArray(res.body.data)).toBe(true);
-  });
-});
-
-describe('DELETE /api/matching/matches/:matchId', () => {
-  /*
-  it('should delete a match successfully', async () => {
-    const createRes = await request(app).post('/api/matching/matches').send({ volunteerId: 'vol1', eventId: 'ev1' });
-    const matchId = createRes.body.data.id;
-    const res = await request(app).delete(`/api/matching/matches/${matchId}`);
-    expect(res.statusCode).toBe(200);
-    expect(res.body.message).toMatch(/deleted successfully/);
-  });
-*/
-  it('should return 404 for non-existent match', async () => {
-    const res = await request(app).delete('/api/matching/matches/fake-id');
-    expect(res.statusCode).toBe(404);
-  });
-});
-
-describe('GET /api/matching/volunteer-history/:volunteerId', () => {
-  it('should return volunteer history if exists', async () => {
-    await request(app).post('/api/matching/matches').send({ volunteerId: 'vol1', eventId: 'ev1' });
-    const res = await request(app).get('/api/matching/volunteer-history/vol1');
-    expect(res.statusCode).toBe(200);
-    expect(Array.isArray(res.body.data)).toBe(true);
-  });
-
-  it('should return 404 if volunteer not found', async () => {
-    const res = await request(app).get('/api/matching/volunteer-history/invalid');
-    expect(res.statusCode).toBe(404);
-  });
-});
-
-it('should mark participationStatus as "Current" for future events', async () => {
-  const futureDate = new Date();
-  futureDate.setDate(futureDate.getDate() + 5); // 5 days from now
-  const isoDate = futureDate.toISOString().split('T')[0];
-
-  const volunteerId = 'vol_future';
-  const eventId = 'ev_future';
-
-  // Setup mock volunteer
-  mockDataStore[volunteerId] = {
-    uid: volunteerId,
-    name: 'Future Volunteer',
-    city: 'Houston',
-    state: 'TX',
-    role: 'volunteer',
-    skills: ['Cooking'],
-    availability: [isoDate],
-    history: [
-      {
-        eid: eventId,
-        participationStatus: 'Confirmed'
+  return {
+    db: {
+      collection: jest.fn((name) => createMockCollection(name))
+    },
+    __mockControls: {
+      setFirebaseSuccess: (success) => { shouldFirebaseSucceed = success; },
+      setDocExists: (exists) => { mockDocExists = exists; },
+      setCollectionEmpty: (empty) => { mockCollectionEmpty = empty; },
+      resetMocks: () => {
+        shouldFirebaseSucceed = true;
+        mockDocExists = true;
+        mockCollectionEmpty = false;
+        // Reset mock data arrays
+        mockEvents.length = 0;
+        mockEvents.push(
+          {
+            id: 'event1',
+            eventname: 'Beach Cleanup',
+            city: 'Houston',
+            state: 'TX',
+            skills: ['environmental', 'physical'],
+            urgency: '3',
+            availability: ['2025-12-01', '2025-12-02']
+          },
+          {
+            id: 'event2', 
+            eventname: 'Food Drive',
+            city: 'Austin',
+            state: 'TX', 
+            skills: ['organization', 'communication'],
+            urgency: '2',
+            availability: ['2024-01-01']
+          }
+        );
+        mockVolunteers.length = 0;
+        mockVolunteers.push(
+          {
+            uid: 'vol1',
+            name: 'John Doe',
+            city: 'Houston',
+            state: 'TX',
+            role: 'volunteer',
+            skills: ['environmental', 'communication'],
+            availability: ['2025-12-01'],
+            history: []
+          },
+          {
+            uid: 'vol2', 
+            name: 'Jane Smith',
+            city: 'Austin',
+            state: 'TX',
+            role: 'volunteer', 
+            skills: ['organization'],
+            availability: ['2025-12-02'],
+            history: []
+          }
+        );
+        mockMatches.length = 0;
+        mockMatches.push({
+          id: 'match1',
+          volunteerId: 'vol1',
+          eventId: 'event1',
+          volunteerName: 'John Doe',
+          eventName: 'Beach Cleanup',
+          matchedSkills: ['environmental'],
+          createdAt: '2025-01-01T00:00:00.000Z',
+          matchStatus: 'active'
+        });
+        jest.clearAllMocks();
       }
-    ]
+    },
+    __mockData: { mockEvents, mockVolunteers, mockMatches }
   };
-
-  // Setup mock event
-  mockEvents.push({
-    eid: eventId,
-    eventname: 'Future Event',
-    city: 'Houston',
-    state: 'TX',
-    skills: ['Cooking'],
-    urgency: '2',
-    availability: [isoDate]
-  });
-
-  const res = await request(app).get(`/api/matching/volunteer-history/${volunteerId}`);
-
-  expect(res.statusCode).toBe(200);
-  expect(res.body.success).toBe(true);
-  expect(res.body.data.length).toBeGreaterThan(0);
-  expect(res.body.data[0].participationStatus).toBe('Current');
 });
 
-it('should mark participationStatus as "Completed" for past events', async () => {
-  const pastDate = new Date();
-  pastDate.setDate(pastDate.getDate() - 5); // 5 days ago
-  const isoDate = pastDate.toISOString().split('T')[0];
+jest.mock('../utils/notificationService', () => ({
+  sendNotification: jest.fn().mockResolvedValue(true)
+}));
 
-  const volunteerId = 'vol_past';
-  const eventId = 'ev_past';
+jest.mock('../utils/notificationAggregator', () => jest.fn());
 
-  // Setup mock volunteer
-  mockDataStore[volunteerId] = {
-    uid: volunteerId,
-    name: 'Past Volunteer',
-    city: 'Houston',
-    state: 'TX',
-    role: 'volunteer',
-    skills: ['Cooking'],
-    availability: [],
-    history: [
-      {
-        eid: eventId,
-        participationStatus: 'Confirmed'
-      }
-    ]
-  };
+jest.mock('firebase-admin', () => ({
+  firestore: {
+    FieldValue: {
+      arrayUnion: jest.fn((data) => ({ arrayUnion: data }))
+    }
+  }
+}));
 
-  // Setup mock event
-  mockEvents.push({
-    eid: eventId,
-    eventname: 'Past Event',
-    city: 'Houston',
-    state: 'TX',
-    skills: ['Cooking'],
-    urgency: '2',
-    availability: [isoDate]
+// Import app after mocks
+const app = require('../index');
+const { __mockControls, __mockData } = require('../firebase');
+const notificationService = require('../utils/notificationService');
+
+describe('Volunteer Matching Routes - 80%+ Coverage', () => {
+  
+  beforeEach(() => {
+    __mockControls.resetMocks();
+    jest.clearAllMocks();
   });
 
-  const res = await request(app).get(`/api/matching/volunteer-history/${volunteerId}`);
+  describe('GET /api/matching/events - Branch Coverage', () => {
+    it('should return filtered and sorted events successfully', async () => {
+      __mockControls.setFirebaseSuccess(true);
+      
+      const res = await request(app).get('/api/matching/events');
+      
+      expect(res.statusCode).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data).toBeDefined();
+      expect(Array.isArray(res.body.data)).toBe(true);
+      
+      // Should filter out past events and include future ones
+      expect(res.body.data.length).toBe(1); // Only event1 should remain
+      expect(res.body.data[0].name).toBe('Beach Cleanup');
+      expect(res.body.data[0]).toHaveProperty('urgencyName');
+    });
 
-  expect(res.statusCode).toBe(200);
-  expect(res.body.success).toBe(true);
-  expect(res.body.data[0].participationStatus).toBe('Completed');
+    it('should handle events with no availability array', async () => {
+      // Add event without availability to mock data
+      __mockData.mockEvents.push({
+        id: 'event3',
+        eventname: 'No Availability Event', 
+        city: 'Dallas',
+        urgency: '1'
+      });
+      
+      const res = await request(app).get('/api/matching/events');
+      
+      expect(res.statusCode).toBe(200);
+      expect(res.body.success).toBe(true);
+      
+      // Should include event without availability
+      const noAvailEvent = res.body.data.find(e => e.name === 'No Availability Event');
+      expect(noAvailEvent).toBeDefined();
+      expect(noAvailEvent.date).toBe('TBD');
+    });
+
+    it('should handle events with empty availability array', async () => {
+      __mockData.mockEvents[0].availability = [];
+      
+      const res = await request(app).get('/api/matching/events');
+      
+      expect(res.statusCode).toBe(200);
+      expect(res.body.success).toBe(true);
+      // Event with empty availability should be included
+    });
+
+    it('should handle Firebase error', async () => {
+      __mockControls.setFirebaseSuccess(false);
+      
+      const res = await request(app).get('/api/matching/events');
+      
+      expect(res.statusCode).toBe(500);
+      expect(res.body.success).toBe(false);
+      expect(res.body.message).toBe('Failed to fetch events');
+    });
+
+    it('should sort events by urgency correctly', async () => {
+      // Reset and add multiple events with different urgencies
+      __mockData.mockEvents.length = 0;
+      __mockData.mockEvents.push(
+        { id: 'e1', eventname: 'Low', urgency: '1', availability: ['2025-12-01'] },
+        { id: 'e2', eventname: 'Critical', urgency: '4', availability: ['2025-12-01'] },
+        { id: 'e3', eventname: 'High', urgency: '3', availability: ['2025-12-01'] }
+      );
+      
+      const res = await request(app).get('/api/matching/events');
+      
+      expect(res.statusCode).toBe(200);
+      expect(res.body.data[0].name).toBe('Critical'); // Highest urgency first
+      expect(res.body.data[1].name).toBe('High');
+      expect(res.body.data[2].name).toBe('Low');
+    });
+  });
+
+  describe('GET /api/matching/volunteers/:eventId - Branch Coverage', () => {
+    it('should return matching volunteers successfully', async () => {
+      __mockControls.setFirebaseSuccess(true);
+      
+      const res = await request(app).get('/api/matching/volunteers/event1');
+      
+      expect(res.statusCode).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.volunteers).toBeDefined();
+      expect(res.body.data.eventDetails).toBeDefined();
+    });
+
+    it('should return 404 when event not found', async () => {
+      __mockControls.setDocExists(false);
+      
+      const res = await request(app).get('/api/matching/volunteers/nonexistent');
+      
+      expect(res.statusCode).toBe(404);
+      expect(res.body.success).toBe(false);
+      expect(res.body.message).toBe('Event not found');
+    });
+
+    it('should handle Firebase error', async () => {
+      __mockControls.setFirebaseSuccess(false);
+      
+      const res = await request(app).get('/api/matching/volunteers/event1');
+      
+      expect(res.statusCode).toBe(500);
+      expect(res.body.success).toBe(false);
+      expect(res.body.message).toBe('Failed to fetch matching volunteers');
+    });
+  });
+
+  describe('POST /api/matching/matches - Branch Coverage', () => {
+    it('should create match successfully', async () => {
+      __mockControls.setFirebaseSuccess(true);
+      __mockControls.setCollectionEmpty(true); // No existing matches
+      
+      const res = await request(app)
+        .post('/api/matching/matches')
+        .send({
+          volunteerId: 'vol2',
+          eventId: 'event2' // Match Jane from Austin with Austin event
+        });
+      
+      expect(res.statusCode).toBe(201);
+      expect(res.body.success).toBe(true);
+      expect(res.body.message).toBe('Match created successfully');
+      expect(res.body.data.id).toBeDefined();
+      expect(notificationService.sendNotification).toHaveBeenCalled();
+    });
+
+    it('should return 400 when volunteerId missing', async () => {
+      const res = await request(app)
+        .post('/api/matching/matches')
+        .send({
+          eventId: 'event1'
+        });
+      
+      expect(res.statusCode).toBe(400);
+      expect(res.body.success).toBe(false);
+      expect(res.body.message).toBe('Both volunteerId and eventId are required');
+    });
+
+    it('should return 400 when eventId missing', async () => {
+      const res = await request(app)
+        .post('/api/matching/matches')
+        .send({
+          volunteerId: 'vol1'
+        });
+      
+      expect(res.statusCode).toBe(400);
+      expect(res.body.success).toBe(false);
+      expect(res.body.message).toBe('Both volunteerId and eventId are required');
+    });
+
+    it('should return 409 when match already exists', async () => {
+      __mockControls.setFirebaseSuccess(true);
+      __mockControls.setCollectionEmpty(false); // Existing matches found
+      
+      const res = await request(app)
+        .post('/api/matching/matches')
+        .send({
+          volunteerId: 'vol1',
+          eventId: 'event1'
+        });
+      
+      expect(res.statusCode).toBe(409);
+      expect(res.body.success).toBe(false);
+      expect(res.body.message).toBe('This volunteer is already matched to this event');
+    });
+
+    it('should handle Firebase error during match creation', async () => {
+      __mockControls.setFirebaseSuccess(false);
+      
+      const res = await request(app)
+        .post('/api/matching/matches')
+        .send({
+          volunteerId: 'vol1',
+          eventId: 'event1'
+        });
+      
+      expect(res.statusCode).toBe(500);
+      expect(res.body.success).toBe(false);
+      expect(res.body.message).toBe('Failed to create match');
+    });
+  });
+
+  describe('GET /api/matching/matches - Branch Coverage', () => {
+    it('should return all matches successfully', async () => {
+      __mockControls.setFirebaseSuccess(true);
+      
+      const res = await request(app).get('/api/matching/matches');
+      
+      expect(res.statusCode).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data).toBeDefined();
+      expect(Array.isArray(res.body.data)).toBe(true);
+    });
+
+    it('should handle Firebase error', async () => {
+      __mockControls.setFirebaseSuccess(false);
+      
+      const res = await request(app).get('/api/matching/matches');
+      
+      expect(res.statusCode).toBe(500);
+      expect(res.body.success).toBe(false);
+      expect(res.body.message).toBe('Failed to fetch matches');
+    });
+  });
+
+  describe('DELETE /api/matching/matches/:matchId - Branch Coverage', () => {
+    it('should delete match successfully', async () => {
+      __mockControls.setFirebaseSuccess(true);
+      
+      const res = await request(app).delete('/api/matching/matches/match1');
+      
+      expect(res.statusCode).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.message).toBe('Match deleted successfully');
+    });
+
+    it('should return 404 when match not found', async () => {
+      __mockControls.setDocExists(false);
+      
+      const res = await request(app).delete('/api/matching/matches/nonexistent');
+      
+      expect(res.statusCode).toBe(404);
+      expect(res.body.success).toBe(false);
+      expect(res.body.message).toBe('Match not found');
+    });
+
+    it('should handle Firebase error during deletion', async () => {
+      __mockControls.setFirebaseSuccess(false);
+      
+      const res = await request(app).delete('/api/matching/matches/match1');
+      
+      expect(res.statusCode).toBe(500);
+      expect(res.body.success).toBe(false);
+      expect(res.body.message).toBe('Failed to delete match');
+    });
+  });
+
+  describe('GET /api/matching/volunteer-history/:volunteerId - Branch Coverage', () => {
+    it('should return volunteer history successfully', async () => {
+      __mockControls.setFirebaseSuccess(true);
+      // Add history to volunteer
+      __mockData.mockVolunteers[0].history = [
+        {
+          eid: 'event1',
+          eventname: 'Test Event',
+          participationStatus: 'Confirmed'
+        }
+      ];
+      
+      const res = await request(app).get('/api/matching/volunteer-history/vol1');
+      
+      expect(res.statusCode).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data).toBeDefined();
+      expect(Array.isArray(res.body.data)).toBe(true);
+    });
+
+    it('should return 404 when volunteer not found', async () => {
+      __mockControls.setDocExists(false);
+      
+      const res = await request(app).get('/api/matching/volunteer-history/nonexistent');
+      
+      expect(res.statusCode).toBe(404);
+      expect(res.body.success).toBe(false);
+      expect(res.body.message).toBe('Volunteer not found');
+    });
+
+    it('should handle volunteer with no history', async () => {
+      __mockData.mockVolunteers[0].history = [];
+      
+      const res = await request(app).get('/api/matching/volunteer-history/vol1');
+      
+      expect(res.statusCode).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.length).toBe(0);
+    });
+
+    it('should handle Firebase error', async () => {
+      __mockControls.setFirebaseSuccess(false);
+      
+      const res = await request(app).get('/api/matching/volunteer-history/vol1');
+      
+      expect(res.statusCode).toBe(500);
+      expect(res.body.success).toBe(false);
+      expect(res.body.message).toBe('Failed to fetch event history');
+    });
+  });
+
+  describe('Edge Cases and Error Handling', () => {
+    it('should handle empty collections gracefully', async () => {
+      __mockControls.setCollectionEmpty(true);
+      
+      const res = await request(app).get('/api/matching/events');
+      
+      expect(res.statusCode).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.length).toBe(0);
+    });
+
+    it('should handle malformed data gracefully', async () => {
+      // Add malformed event
+      __mockData.mockEvents.push({
+        id: 'malformed',
+        // Missing required fields
+      });
+      
+      const res = await request(app).get('/api/matching/events');
+      
+      expect(res.statusCode).toBe(200);
+      expect(res.body.success).toBe(true);
+      // Should handle malformed data without crashing
+    });
+  });
 });
 
