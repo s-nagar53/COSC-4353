@@ -7,9 +7,26 @@ const NotificationAggregator = require('../utils/notificationAggregator');
 const admin = require('firebase-admin');
 
 // Firestore collections
-const eventsCollection = db.collection('events');
-const profilesCollection = db.collection('users');
-const matchesCollection = db.collection('matches');
+const eventsCollection = () => {
+  if (!db) {
+    throw new Error('Database not initialized');
+  }
+  return db.collection('events');
+};
+
+const profilesCollection = () => {
+  if (!db) {
+    throw new Error('Database not initialized');
+  }
+  return db.collection('users');
+};
+
+const matchesCollection = () => {
+  if (!db) {
+    throw new Error('Database not initialized');
+  }
+  return db.collection('matches');
+};
 
 // GET /api/matching/events
 router.get('/events', async (req, res) => {

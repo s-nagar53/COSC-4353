@@ -22,5 +22,8 @@
       "<rootDir>/backend/data/",
       "<rootDir>/backend/utils/validateEvent.js"
     ]
+  },
+  "devDependencies": {
+    "jest": "^30.0.5"
   }
 }

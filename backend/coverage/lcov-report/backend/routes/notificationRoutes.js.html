@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">38.88% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>7/18</span>
+                <span class='fraction'>18/18</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/5</span>
+                <span class='fraction'>5/5</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/3</span>
+                <span class='fraction'>3/3</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">38.88% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>7/18</span>
+                <span class='fraction'>18/18</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -94,66 +94,66 @@
 <a name='L29'></a><a href='#L29'>29</a>
 <a name='L30'></a><a href='#L30'>30</a>
 <a name='L31'></a><a href='#L31'>31</a>
-<a name='L32'></a><a href='#L32'>32</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">3x</span>
+<a name='L32'></a><a href='#L32'>32</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">5x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span></td><td class="text"><pre class="prettyprint lang-js">const express = require('express');
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span></td><td class="text"><pre class="prettyprint lang-js">const express = require('express');
 const router = express.Router();
 const notificationService = require('../utils/notificationService');
 &nbsp;
 // POST /api/notifications/send
 // Body: { uid, type, message, data }
-router.post('/send', <span class="fstat-no" title="function not covered" >(r</span>eq, res) =&gt; {
-  const { uid, type, message, data } = <span class="cstat-no" title="statement not covered" >req.body;</span>
-<span class="cstat-no" title="statement not covered" >  if (!uid || !type || !message) {</span>
-<span class="cstat-no" title="statement not covered" >    return res.status(400).json({ success: false, message: 'uid, type, and message are required' });</span>
+router.post('/send', (req, res) =&gt; {
+  const { uid, type, message, data } = req.body;
+  if (!uid || !type || !message) {
+    return res.status(400).json({ success: false, message: 'uid, type, and message are required' });
   }
-<span class="cstat-no" title="statement not covered" >  notificationService.sendNotification(uid, { type, message, data });</span>
-<span class="cstat-no" title="statement not covered" >  res.status(201).json({ success: true, message: 'Notification sent' });</span>
+  notificationService.sendNotification(uid, { type, message, data });
+  res.status(201).json({ success: true, message: 'Notification sent' });
 });
 &nbsp;
 // GET /api/notifications/:uid
 // Get all notifications for a user
-router.get('/:uid', <span class="fstat-no" title="function not covered" >(r</span>eq, res) =&gt; {
-  const { uid } = <span class="cstat-no" title="statement not covered" >req.params;</span>
-  const notifications = <span class="cstat-no" title="statement not covered" >notificationService.getNotifications(uid);</span>
-<span class="cstat-no" title="statement not covered" >  res.json({ success: true, notifications });</span>
+router.get('/:uid', (req, res) =&gt; {
+  const { uid } = req.params;
+  const notifications = notificationService.getNotifications(uid);
+  res.json({ success: true, notifications });
 });
 &nbsp;
 // PATCH /api/notifications/:uid/read
 // Mark all notifications as read for a user
-router.patch('/:uid/read', <span class="fstat-no" title="function not covered" >(r</span>eq, res) =&gt; {
-  const { uid } = <span class="cstat-no" title="statement not covered" >req.params;</span>
-<span class="cstat-no" title="statement not covered" >  notificationService.markAllAsRead(uid);</span>
-<span class="cstat-no" title="statement not covered" >  res.json({ success: true, message: 'All notifications marked as read' });</span>
+router.patch('/:uid/read', (req, res) =&gt; {
+  const { uid } = req.params;
+  notificationService.markAllAsRead(uid);
+  res.json({ success: true, message: 'All notifications marked as read' });
 });
 &nbsp;
 module.exports = router; </pre></td></tr></table></pre>
@@ -163,7 +163,7 @@ module.exports = router; </pre></td></tr></table></pre>
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-07-31T04:04:00.945Z
+                at 2025-07-31T17:53:31.565Z
             </div>
         <script src="../../prettify.js"></script>
         <script>
