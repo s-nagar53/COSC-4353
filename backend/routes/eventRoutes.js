@@ -204,14 +204,14 @@ const router = express.Router();
 const { db, firebaseInitialized } = require('../firebase');
 
 // Collection getter functions
-const getEventsCollection = () => {
+const geteventsCollection = () => {
   if (!db) {
     throw new Error('Database not initialized');
   }
   return db.collection('events');
 };
 
-const getMatchesCollection = () => {
+const getmatchesCollection = () => {
   if (!db) {
     throw new Error('Database not initialized');
   }
