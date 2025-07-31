@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const { db } = require('../firebase');
-const { statesHelper } = require('../data/statesData');
+//const { statesHelper } = require('../data/statesData');
 
 const statesCollection = db.collection('states');
+
 
 // Get all states
 router.get('/all', async (req, res) => {
@@ -15,8 +16,10 @@ router.get('/all', async (req, res) => {
     });
     res.json({ states });
   } catch (error) {
+      console.error('Error fetching all states:', error);
+      res.status(500).json({ message: 'Internal server error' });
     // Fallback to memory data
-    res.json({ states: statesHelper.getAll() });
+    //res.json({ states: statesHelper.getAll() });
   }
 });
 
@@ -34,7 +37,9 @@ router.get('/region/:region', async (req, res) => {
     });
     res.json({ states });
   } catch (error) {
-    res.json({ states: statesHelper.getByRegion(region) });
+    console.error(`Error fetching states for region ${req.params.region}:`, error);
+    res.status(500).json({ message: 'Internal server error' });
+    //res.json({ states: statesHelper.getByRegion(region) });
   }
 });
 
@@ -49,12 +54,8 @@ router.get('/:code', async (req, res) => {
       res.status(404).json({ message: 'State not found' });
     }
   } catch (error) {
-    const state = statesHelper.getByCode(req.params.code);
-    if (state) {
-      res.json(state);
-    } else {
-      res.status(404).json({ message: 'State not found' });
-    }
+    console.error(`Error fetching state with code ${req.params.code}:`, error);
+    res.status(500).json({ message: 'Internal server error' });
   }
 });
 

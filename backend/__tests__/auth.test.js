@@ -2,13 +2,10 @@ jest.mock('firebase-admin');
 
 const request = require('supertest');
 const app = require('../index');
-const admin = require('firebase-admin'); // 🔁 needed to control mock
 
 describe('POST /set-role', () => {
   it('should return 400 if ID token or role is missing', async () => {
-    const res = await request(app)
-      .post('/set-role')
-      .send({});
+    const res = await request(app).post('/set-role').send({});
     expect(res.statusCode).toBe(400);
     expect(res.body.message).toMatch(/Missing ID token or role/);
   });

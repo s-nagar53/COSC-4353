@@ -3,7 +3,7 @@
 <html lang="en">
 
 <head>
-    <title>Code coverage report for utils/validateEvent.js</title>
+    <title>Code coverage report for utils/notificationAggregator.js</title>
     <meta charset="utf-8" />
     <link rel="stylesheet" href="../prettify.css" />
     <link rel="stylesheet" href="../base.css" />
@@ -19,20 +19,20 @@
 <body>
 <div class='wrapper'>
     <div class='pad1'>
-        <h1><a href="../index.html">All files</a> / <a href="index.html">utils</a> validateEvent.js</h1>
+        <h1><a href="../index.html">All files</a> / <a href="index.html">utils</a> notificationAggregator.js</h1>
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>21/21</span>
+                <span class='fraction'>7/7</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>30/30</span>
+                <span class='fraction'>0/0</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>13/13</span>
+                <span class='fraction'>7/7</span>
             </div>
         
             
@@ -80,50 +80,41 @@
 <a name='L15'></a><a href='#L15'>15</a>
 <a name='L16'></a><a href='#L16'>16</a>
 <a name='L17'></a><a href='#L17'>17</a>
-<a name='L18'></a><a href='#L18'>18</a>
-<a name='L19'></a><a href='#L19'>19</a>
-<a name='L20'></a><a href='#L20'>20</a>
-<a name='L21'></a><a href='#L21'>21</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-yes">3x</span>
+<a name='L18'></a><a href='#L18'>18</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">11x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">function validateEvent(data) {
-    const errors = [];
-  
-    if (!data.eid) errors.push('Missing event ID (eid)');
-    if (!data.uid) errors.push('Missing user ID (uid)'); // Keep uid for the creator
-    if (!data.eventname || !data.eventname.trim()) errors.push('Missing event name');
-    if (!data.address || !data.address.trim()) errors.push('Missing address');
-    if (!data.city || !data.city.trim()) errors.push('Missing city');
-    if (!data.state || !data.state.trim()) errors.push('Missing state');
-    if (!data.zip || data.zip.length &lt; 5) errors.push('Invalid zip code');
-    if (!data.urgency) errors.push('Missing urgency level');
-  
-    if (!Array.isArray(data.skills) || data.skills.length === 0) {
-      errors.push('At least one skill required');
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span></td><td class="text"><pre class="prettyprint lang-js">const matchData = require('../data/memoryMatches');
+const notificationService = require('./notificationService');
+&nbsp;
+class NotificationAggregator {
+  /**
+   * Returns a map of match IDs to notifications for the matched volunteer.
+   * { [matchId]: [notifications] }
+   */
+  static getMatchNotifications() {
+    const notificationsMap = {};
+    for (const match of matchData.matches) {
+      notificationsMap[match.id] = notificationService.getNotifications(match.volunteerId);
     }
-  
-    return errors;
+    return notificationsMap;
+  }
 }
-  
-module.exports = { validateEvent };
-  </pre></td></tr></table></pre>
+&nbsp;
+module.exports = NotificationAggregator; </pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
             </div><!-- /wrapper -->
