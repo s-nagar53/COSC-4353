@@ -1,190 +1,724 @@
-jest.mock('../utils/notificationService', () => ({
-  sendNotification: jest.fn()
-}));
+// jest.mock('../firebase');
+// const request = require('supertest');
+// const app = require('../index'); // Ensure your Express app is exported
+// const { db } = require('../firebase'); // ✅ this fixes the ReferenceError
+
+// const { __mockData } = require('../firebase');
+
+// beforeEach(() => {
+//   __mockData.mockEvents.length = 0;
+//   __mockData.mockEvents.push(
+//     {
+//       eid: 'e1',
+//       title: 'Food Drive',
+//       date: '2025-08-01',
+//       location: 'Houston',
+//       description: 'Community food collection'
+//     },
+//     {
+//       eid: 'e2',
+//       title: 'Beach Cleanup',
+//       date: '2025-08-15',
+//       location: 'Galveston',
+//       description: 'Environmental cleanup event'
+//     }
+//   );
+// });
+
+// describe('Event Routes', () => {
+//   it('GET /api/event/all - should return all events', async () => {
+//   const res = await request(app).get('/api/event/all'); // ✅ corrected path
+//   expect(res.statusCode).toBe(200);
+//   expect(Array.isArray(res.body.events)).toBe(true);
+//   expect(res.body.events.length).toBe(2);
+// });
+
+
+//   it('GET /api/event/e1 - should return the event with eid e1', async () => {
+//     const res = await request(app).get('/api/event/e1'); // FIXED PATH
+//     expect(res.statusCode).toBe(200);
+//     expect(res.body.title).toBe('Food Drive');
+//   });
+
+//   it('GET /api/event/invalid - should return 404 if event not found', async () => {
+//     const res = await request(app).get('/api/event/invalid'); // FIXED PATH
+//     expect(res.statusCode).toBe(404);
+//     expect(res.body.message).toBe('Event not found');
+//   });
+// });
+
+// it('POST /api/event - creates a new event', async () => {
+//   const res = await request(app).post('/api/event').send({
+//     eid: 'e3',
+//     uid: 'u1',
+//     role: 'coordinator',
+//     eventname: 'Tree Planting',
+//     address: '123 Green St',
+//     city: 'Austin',
+//     state: 'TX',
+//     zip: '78701',
+//     urgency: 'High',
+//     availability: ['2025-12-01'],
+//     skills: ['gardening', 'coordination']
+//   });
+
+//   expect(res.statusCode).toBe(200);
+//   expect(res.body.message).toBe('Event saved successfully');
+// });
+
+
+// it('POST /api/event - missing eid returns 400', async () => {
+//   const res = await request(app).post('/api/event').send({
+//     uid: 'u1',
+//     role: 'coordinator',
+//     eventname: 'Invalid Event'
+//   });
+//   expect(res.statusCode).toBe(400);
+// });
+
+// it('DELETE /api/event/invalid - returns 404 if event not found', async () => {
+//   const res = await request(app).delete('/api/event/invalid');
+//   expect(res.statusCode).toBe(404);
+// });
+
+// it('DELETE /api/event/e1 - deletes an event successfully', async () => {
+//   const res = await request(app).delete('/api/event/e1');
+//   expect(res.statusCode).toBe(200);
+//   expect(res.body.message).toBe('Event deleted successfully');
+// });
+
+// it('POST /api/event - returns 400 if eid is missing', async () => {
+//   const res = await request(app).post('/api/event').send({
+//     uid: 'u1',
+//     city: 'Austin',
+//   });
+//   expect(res.statusCode).toBe(400);
+//   expect(res.body.message).toBe('Missing Event ID (eid)');
+// });
+
+// it('DELETE /api/event/invalid - returns 404 if event not found', async () => {
+//   const res = await request(app).delete('/api/event/invalid');
+//   expect(res.statusCode).toBe(404);
+//   expect(res.body.message).toBe('Event not found');
+// });
+
+// /*
+// it('POST /api/event - returns 500 if Firestore throws during save', async () => {
+//   const { db } = require('../firebase');
+
+//   // Backup original collection method
+//   const originalCollection = db.collection;
+
+//   // Mock the Firestore behavior to throw inside .set()
+//   db.collection = jest.fn(() => ({
+//     doc: jest.fn(() => ({
+//       get: jest.fn().mockResolvedValue({ exists: false }), // pretend doc doesn't exist
+//       set: jest.fn().mockRejectedValue(new Error('Simulated Firestore failure'))
+//     }))
+//   }));
+
+//   const res = await request(app).post('/api/event').send({
+//     eid: 'e500',
+//     uid: 'u500',
+//     eventname: 'Fails to Save',
+//     address: '123 Test Ave',
+//     city: 'Nowhere',
+//     state: 'TX',
+//     zip: '12345',
+//     urgency: 'low',
+//     skills: ['setup'],
+//     availability: ['2025-08-01']
+//   });
+
+//   expect(res.statusCode).toBe(500);
+//   expect(res.body.message).toBe('Failed to save event');
+
+//   // Restore
+//   db.collection = originalCollection;
+// });
+// */
+
+// eventRoutes.test.js - Comprehensive Tests for Event Routes
 
 const request = require('supertest');
 const express = require('express');
 const eventRoutes = require('../routes/eventRoutes');
-const { events } = require('../data/memoryEvents');
+
+// Mock dependencies
+jest.mock('../firebase', () => ({
+  db: {
+    collection: jest.fn()
+  }
+}));
+
+jest.mock('../utils/validateEvent', () => ({
+  validateEvent: jest.fn()
+}));
+
+jest.mock('../utils/notificationService', () => ({
+  sendNotification: jest.fn()
+}));
+
+const { db } = require('../firebase');
+const { validateEvent } = require('../utils/validateEvent');
 const notificationService = require('../utils/notificationService');
-const { matches } = require('../data/memoryMatches');
 
-
-// 🔧 Setup a fresh app instance with only event routes
+// Create express app for testing
 const app = express();
 app.use(express.json());
-app.use('/api/event', eventRoutes);
- const validEvent = {
-  eid: 'ev123',
-  uid: 'u1',
-  role: 'admin', // optional, not validated here
-  eventname: 'Test Event',
-  address: '123 Main St',
-  city: 'Houston',
-  state: 'TX',
-  zip: '77001',
-  urgency: 'Medium',
-  skills: ['Setup'],
-  availability: ['2025-07-20'], // optional, used in backend
-};
+app.use('/events', eventRoutes);
 
-beforeEach(() => {
-  events.event = []; // reset in-memory data before each test
-});
+describe('Event Routes', () => {
+  let mockCollection, mockDoc, mockGet, mockSet, mockUpdate, mockDelete, mockWhere;
 
-describe('GET /api/event/all', () => {
-  it('should return an empty event list', async () => {
-    const res = await request(app).get('/api/event/all');
-    expect(res.statusCode).toBe(200);
-    expect(res.body.events).toEqual([]);
+  beforeEach(() => {
+    jest.clearAllMocks();
+    
+    // Mock Firestore methods
+    mockGet = jest.fn();
+    mockSet = jest.fn();
+    mockUpdate = jest.fn();
+    mockDelete = jest.fn();
+    mockWhere = jest.fn();
+    
+    mockDoc = jest.fn(() => ({
+      get: mockGet,
+      set: mockSet,
+      update: mockUpdate,
+      delete: mockDelete
+    }));
+    
+    mockCollection = jest.fn(() => ({
+      get: mockGet,
+      doc: mockDoc,
+      where: mockWhere
+    }));
+    
+    db.collection = mockCollection;
+    
+    // Mock console methods to avoid noise in tests
+    jest.spyOn(console, 'log').mockImplementation(() => {});
+    jest.spyOn(console, 'error').mockImplementation(() => {});
   });
 
-  it('should return a list of events', async () => {
-    events.event.push({ eid: 'ev123', eventname: 'Test Event' });
-    const res = await request(app).get('/api/event/all');
-    expect(res.statusCode).toBe(200);
-    expect(res.body.events[0].eid).toBe('ev123');
-  });
-});
-
-describe('POST /api/event', () => {
-
-  it('should create a valid event', async () => {
-    const res = await request(app).post('/api/event').send(validEvent);
-    expect(res.statusCode).toBe(200);
-    expect(res.body.message).toBe('Event saved successfully');
-    expect(events.event.length).toBe(1);
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
-  it('should return 400 for missing eid', async () => {
-    const { eid, ...invalid } = validEvent;
-    const res = await request(app).post('/api/event').send(invalid);
-    expect(res.statusCode).toBe(400);
-    expect(res.body.message).toMatch(/Missing Event ID/);
+  describe('GET /events/all', () => {
+    it('should fetch all events successfully', async () => {
+      const mockEvents = [
+        { id: 'event1', eventname: 'Test Event 1', city: 'Houston' },
+        { id: 'event2', eventname: 'Test Event 2', city: 'Dallas' }
+      ];
+
+      const mockSnapshot = {
+        forEach: jest.fn((callback) => {
+          mockEvents.forEach((event, index) => {
+            callback({
+              id: event.id,
+              data: () => ({ eventname: event.eventname, city: event.city })
+            });
+          });
+        })
+      };
+
+      mockGet.mockResolvedValue(mockSnapshot);
+
+      const response = await request(app)
+        .get('/events/all')
+        .expect(200);
+
+      expect(response.body.events).toHaveLength(2);
+      expect(response.body.events[0]).toEqual({
+        id: 'event1',
+        eventname: 'Test Event 1',
+        city: 'Houston'
+      });
+      expect(mockCollection).toHaveBeenCalledWith('events');
+    });
+
+    it('should handle errors when fetching all events', async () => {
+      mockGet.mockRejectedValue(new Error('Database error'));
+
+      const response = await request(app)
+        .get('/events/all')
+        .expect(500);
+
+      expect(response.body.message).toBe('Failed to fetch events');
+    });
+
+    it('should return empty array when no events exist', async () => {
+      const mockSnapshot = {
+        forEach: jest.fn()
+      };
+
+      mockGet.mockResolvedValue(mockSnapshot);
+
+      const response = await request(app)
+        .get('/events/all')
+        .expect(200);
+
+      expect(response.body.events).toHaveLength(0);
+    });
   });
 
-  it('should return validation errors if fields are missing', async () => {
-    const res = await request(app)
-      .post('/api/event')
-      .send({ eid: 'bad', role: 'admin' }); // incomplete
-    expect(res.statusCode).toBe(400);
-    expect(res.body.message).toBe('Validation errors');
-    expect(Array.isArray(res.body.errors)).toBe(true);
+  describe('POST /events', () => {
+    const validEventData = {
+      eid: 'event123',
+      uid: 'user123',
+      role: 'organizer',
+      eventname: 'Test Event',
+      city: 'Houston',
+      availability: ['2024-01-15T10:00:00Z', '2024-01-16T10:00:00Z']
+    };
+
+    beforeEach(() => {
+      validateEvent.mockReturnValue([]);
+      notificationService.sendNotification.mockResolvedValue();
+    });
+
+    it('should create a new event successfully', async () => {
+      mockGet.mockResolvedValue({ exists: false });
+      mockSet.mockResolvedValue();
+      
+      // Mock matches query for notifications
+      const mockMatchesSnapshot = {
+        forEach: jest.fn()
+      };
+      mockWhere.mockReturnValue({
+        get: jest.fn().mockResolvedValue(mockMatchesSnapshot)
+      });
+
+      const response = await request(app)
+        .post('/events')
+        .send(validEventData)
+        .expect(200);
+
+      expect(response.body.message).toBe('Event saved successfully');
+      expect(mockDoc).toHaveBeenCalledWith('event123');
+      expect(mockSet).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eid: 'event123',
+          uid: 'user123',
+          role: 'organizer',
+          eventname: 'Test Event',
+          city: 'Houston',
+          availability: ['2024-01-15', '2024-01-16'],
+          id: 'event123'
+        })
+      );
+    });
+
+    it('should update an existing event successfully', async () => {
+      mockGet.mockResolvedValue({ exists: true });
+      mockUpdate.mockResolvedValue();
+      
+      // Mock matches query for notifications
+      const mockMatchesSnapshot = {
+        forEach: jest.fn()
+      };
+      mockWhere.mockReturnValue({
+        get: jest.fn().mockResolvedValue(mockMatchesSnapshot)
+      });
+
+      const response = await request(app)
+        .post('/events')
+        .send(validEventData)
+        .expect(200);
+
+      expect(response.body.message).toBe('Event saved successfully');
+      expect(mockUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eid: 'event123',
+          availability: ['2024-01-15', '2024-01-16']
+        })
+      );
+      expect(mockUpdate).toHaveBeenCalledWith(
+        expect.not.objectContaining({
+          createdAt: expect.anything()
+        })
+      );
+    });
+
+    it('should return 400 when eid is missing', async () => {
+      const invalidData = { ...validEventData };
+      delete invalidData.eid;
+
+      const response = await request(app)
+        .post('/events')
+        .send(invalidData)
+        .expect(400);
+
+      expect(response.body.message).toBe('Missing Event ID (eid)');
+    });
+
+    it('should return 400 when validation fails', async () => {
+      validateEvent.mockReturnValue(['Invalid event name', 'Invalid city']);
+
+      const response = await request(app)
+        .post('/events')
+        .send(validEventData)
+        .expect(400);
+
+      expect(response.body.message).toBe('Validation errors');
+      expect(response.body.errors).toEqual(['Invalid event name', 'Invalid city']);
+    });
+
+    it('should send notifications to matched volunteers on update', async () => {
+      mockGet.mockResolvedValue({ exists: true });
+      mockUpdate.mockResolvedValue();
+      
+      // Mock matches with volunteers
+      const mockMatchesSnapshot = {
+        forEach: jest.fn((callback) => {
+          callback({
+            data: () => ({ volunteerId: 'vol1', eventId: 'event123' })
+          });
+          callback({
+            data: () => ({ volunteerId: 'vol2', eventId: 'event123' })
+          });
+        })
+      };
+      mockWhere.mockReturnValue({
+        get: jest.fn().mockResolvedValue(mockMatchesSnapshot)
+      });
+
+      await request(app)
+        .post('/events')
+        .send(validEventData)
+        .expect(200);
+
+      expect(notificationService.sendNotification).toHaveBeenCalledTimes(2);
+      expect(notificationService.sendNotification).toHaveBeenCalledWith('vol1', {
+        type: 'event_update',
+        message: "Event 'Test Event' has been updated.",
+        data: {
+          eventId: 'event123',
+          eventName: 'Test Event',
+          date: '2024-01-15',
+          city: 'Houston'
+        }
+      });
+    });
+
+    it('should handle empty availability array', async () => {
+      const dataWithEmptyAvailability = {
+        ...validEventData,
+        availability: []
+      };
+
+      mockGet.mockResolvedValue({ exists: false });
+      mockSet.mockResolvedValue();
+      
+      const mockMatchesSnapshot = {
+        forEach: jest.fn()
+      };
+      mockWhere.mockReturnValue({
+        get: jest.fn().mockResolvedValue(mockMatchesSnapshot)
+      });
+
+      const response = await request(app)
+        .post('/events')
+        .send(dataWithEmptyAvailability)
+        .expect(200);
+
+      expect(mockSet).toHaveBeenCalledWith(
+        expect.objectContaining({
+          availability: []
+        })
+      );
+    });
+
+    it('should handle notification errors gracefully', async () => {
+      mockGet.mockResolvedValue({ exists: true });
+      mockUpdate.mockResolvedValue();
+      
+      const mockMatchesSnapshot = {
+        forEach: jest.fn((callback) => {
+          callback({
+            data: () => ({ volunteerId: 'vol1', eventId: 'event123' })
+          });
+        })
+      };
+      mockWhere.mockReturnValue({
+        get: jest.fn().mockResolvedValue(mockMatchesSnapshot)
+      });
+
+      notificationService.sendNotification.mockRejectedValue(new Error('Notification failed'));
+
+      const response = await request(app)
+        .post('/events')
+        .send(validEventData)
+        .expect(200);
+
+      expect(response.body.message).toBe('Event saved successfully');
+      // Should not throw error even if notifications fail
+    });
+
+    it('should handle database errors during save', async () => {
+      mockGet.mockRejectedValue(new Error('Database error'));
+
+      const response = await request(app)
+        .post('/events')
+        .send(validEventData)
+        .expect(500);
+
+      expect(response.body.message).toBe('Failed to save event');
+    });
   });
-});
 
-describe('GET /api/event/:eid', () => {
-  it('should return the event by eid', async () => {
-    events.event.push({ eid: 'ev123', eventname: 'One Event' });
-    const res = await request(app).get('/api/event/ev123');
-    expect(res.statusCode).toBe(200);
-    expect(res.body.eventname).toBe('One Event');
+  describe('GET /events/:eid', () => {
+    it('should fetch event by eid successfully', async () => {
+      const mockEventData = {
+        eid: 'event123',
+        eventname: 'Test Event',
+        city: 'Houston'
+      };
+
+      mockGet.mockResolvedValue({
+        exists: true,
+        id: 'event123',
+        data: () => mockEventData
+      });
+
+      const response = await request(app)
+        .get('/events/event123')
+        .expect(200);
+
+      expect(response.body).toEqual({
+        id: 'event123',
+        ...mockEventData
+      });
+      expect(mockDoc).toHaveBeenCalledWith('event123');
+    });
+
+    it('should return 404 when event not found', async () => {
+      mockGet.mockResolvedValue({ exists: false });
+
+      const response = await request(app)
+        .get('/events/nonexistent')
+        .expect(404);
+
+      expect(response.body.message).toBe('Event not found');
+    });
+
+    it('should handle database errors when fetching event', async () => {
+      mockGet.mockRejectedValue(new Error('Database error'));
+
+      const response = await request(app)
+        .get('/events/event123')
+        .expect(500);
+
+      expect(response.body.message).toBe('Failed to fetch event');
+    });
   });
 
-  it('should return 404 for unknown eid', async () => {
-    const res = await request(app).get('/api/event/not-there');
-    expect(res.statusCode).toBe(404);
-    expect(res.body.message).toBe('Event not found');
+  describe('DELETE /events/:eid', () => {
+    const mockEventData = {
+      eid: 'event123',
+      eventname: 'Test Event',
+      city: 'Houston'
+    };
+
+    beforeEach(() => {
+      notificationService.sendNotification.mockResolvedValue();
+    });
+
+    it('should delete event successfully', async () => {
+      mockGet.mockResolvedValue({
+        exists: true,
+        data: () => mockEventData
+      });
+      mockDelete.mockResolvedValue();
+      
+      // Mock matches query for notifications
+      const mockMatchesSnapshot = {
+        forEach: jest.fn()
+      };
+      mockWhere.mockReturnValue({
+        get: jest.fn().mockResolvedValue(mockMatchesSnapshot)
+      });
+
+      const response = await request(app)
+        .delete('/events/event123')
+        .expect(200);
+
+      expect(response.body.message).toBe('Event deleted successfully');
+      expect(mockDelete).toHaveBeenCalled();
+    });
+
+    it('should return 404 when trying to delete non-existent event', async () => {
+      mockGet.mockResolvedValue({ exists: false });
+
+      const response = await request(app)
+        .delete('/events/nonexistent')
+        .expect(404);
+
+      expect(response.body.message).toBe('Event not found');
+      expect(mockDelete).not.toHaveBeenCalled();
+    });
+
+    it('should send cancellation notifications to matched volunteers', async () => {
+      mockGet.mockResolvedValue({
+        exists: true,
+        data: () => mockEventData
+      });
+      mockDelete.mockResolvedValue();
+      
+      // Mock matches with volunteers
+      const mockMatchesSnapshot = {
+        forEach: jest.fn((callback) => {
+          callback({
+            data: () => ({ volunteerId: 'vol1', eventId: 'event123' })
+          });
+          callback({
+            data: () => ({ volunteerId: 'vol2', eventId: 'event123' })
+          });
+        })
+      };
+      mockWhere.mockReturnValue({
+        get: jest.fn().mockResolvedValue(mockMatchesSnapshot)
+      });
+
+      await request(app)
+        .delete('/events/event123')
+        .expect(200);
+
+      expect(notificationService.sendNotification).toHaveBeenCalledTimes(2);
+      expect(notificationService.sendNotification).toHaveBeenCalledWith('vol1', {
+        type: 'event_cancelled',
+        message: "Event 'Test Event' has been cancelled or deleted.",
+        data: {
+          eventId: 'event123'
+        }
+      });
+    });
+
+    it('should handle missing eventname in deletion notifications', async () => {
+      const eventDataWithoutName = { eid: 'event123', city: 'Houston' };
+      
+      mockGet.mockResolvedValue({
+        exists: true,
+        data: () => eventDataWithoutName
+      });
+      mockDelete.mockResolvedValue();
+      
+      const mockMatchesSnapshot = {
+        forEach: jest.fn((callback) => {
+          callback({
+            data: () => ({ volunteerId: 'vol1', eventId: 'event123' })
+          });
+        })
+      };
+      mockWhere.mockReturnValue({
+        get: jest.fn().mockResolvedValue(mockMatchesSnapshot)
+      });
+
+      await request(app)
+        .delete('/events/event123')
+        .expect(200);
+
+      expect(notificationService.sendNotification).toHaveBeenCalledWith('vol1', {
+        type: 'event_cancelled',
+        message: "Event 'event123' has been cancelled or deleted.",
+        data: {
+          eventId: 'event123'
+        }
+      });
+    });
+
+    it('should handle notification errors gracefully during deletion', async () => {
+      mockGet.mockResolvedValue({
+        exists: true,
+        data: () => mockEventData
+      });
+      mockDelete.mockResolvedValue();
+      
+      const mockMatchesSnapshot = {
+        forEach: jest.fn((callback) => {
+          callback({
+            data: () => ({ volunteerId: 'vol1', eventId: 'event123' })
+          });
+        })
+      };
+      mockWhere.mockReturnValue({
+        get: jest.fn().mockResolvedValue(mockMatchesSnapshot)
+      });
+
+      notificationService.sendNotification.mockRejectedValue(new Error('Notification failed'));
+
+      const response = await request(app)
+        .delete('/events/event123')
+        .expect(200);
+
+      expect(response.body.message).toBe('Event deleted successfully');
+    });
+
+    it('should handle database errors during deletion', async () => {
+      mockGet.mockRejectedValue(new Error('Database error'));
+
+      const response = await request(app)
+        .delete('/events/event123')
+        .expect(500);
+
+      expect(response.body.message).toBe('Failed to delete event');
+    });
   });
-});
 
-describe('DELETE /api/event/:eid', () => {
-  it('should delete the event by eid', async () => {
-    events.event.push({ eid: 'ev123', eventname: 'One Event' });
-    const res = await request(app).delete('/api/event/ev123');
-    expect(res.statusCode).toBe(200);
-    expect(res.body.message).toBe('Event deleted successfully');
-    expect(events.event.length).toBe(0);
+  describe('Date normalization', () => {
+    it('should normalize availability dates to YYYY-MM-DD format', async () => {
+      const eventWithDates = {
+        eid: 'event123',
+        uid: 'user123',
+        role: 'organizer',
+        eventname: 'Test Event',
+        availability: [
+          '2024-01-15T10:30:00Z',
+          '2024-01-16T14:45:30.123Z',
+          '2024-01-17'
+        ]
+      };
+
+      validateEvent.mockReturnValue([]);
+      mockGet.mockResolvedValue({ exists: false });
+      mockSet.mockResolvedValue();
+      
+      const mockMatchesSnapshot = {
+        forEach: jest.fn()
+      };
+      mockWhere.mockReturnValue({
+        get: jest.fn().mockResolvedValue(mockMatchesSnapshot)
+      });
+
+      await request(app)
+        .post('/events')
+        .send(eventWithDates)
+        .expect(200);
+
+      expect(mockSet).toHaveBeenCalledWith(
+        expect.objectContaining({
+          availability: ['2024-01-15', '2024-01-16', '2024-01-17']
+        })
+      );
+    });
   });
 
-  it('should return 404 if event not found', async () => {
-    const res = await request(app).delete('/api/event/missing');
-    expect(res.statusCode).toBe(404);
-    expect(res.body.message).toBe('Event not found');
+  describe('Route ordering', () => {
+    it('should handle /all route before /:eid route', async () => {
+      // This test ensures the route ordering is correct
+      // /all should be matched before /:eid
+      const mockSnapshot = {
+        forEach: jest.fn()
+      };
+      mockGet.mockResolvedValue(mockSnapshot);
+
+      const response = await request(app)
+        .get('/events/all')
+        .expect(200);
+
+      expect(response.body).toHaveProperty('events');
+      expect(mockCollection).toHaveBeenCalledWith('events');
+    });
   });
-});
-
-it('should handle event creation with no availability field', async () => {
-  const noAvailability = { ...validEvent };
-  delete noAvailability.availability;
-
-  const res = await request(app).post('/api/event').send(noAvailability);
-  expect(res.statusCode).toBe(200);
-  expect(events.event[0].availability).toEqual([]);
-});
-
-it('should return all added events', async () => {
-  events.event.push({ eid: 'ev1', eventname: 'Event 1' });
-  events.event.push({ eid: 'ev2', eventname: 'Event 2' });
-
-  const res = await request(app).get('/api/event/all');
-  expect(res.statusCode).toBe(200);
-  expect(res.body.events.length).toBe(2);
-  expect(res.body.events.map(e => e.eid)).toEqual(expect.arrayContaining(['ev1', 'ev2']));
-});
-it('should update an existing event with the same eid instead of adding a duplicate', async () => {
-  await request(app).post('/api/event').send(validEvent);
-
-  const updated = { ...validEvent, eventname: 'Updated Event' };
-  const res = await request(app).post('/api/event').send(updated);
-
-  expect(res.statusCode).toBe(200);
-  expect(events.event.length).toBe(1); // Still one event
-  expect(events.event[0].eventname).toBe('Updated Event');
-});
-
-it('should normalize availability dates to YYYY-MM-DD format', async () => {
-  const res = await request(app).post('/api/event').send({
-    ...validEvent,
-    availability: ['2025-07-20T15:30:00.000Z']
-  });
-  expect(res.statusCode).toBe(200);
-  expect(events.event[0].availability[0]).toBe('2025-07-20');
-});
-
-it('should return 500 if fetching events throws an error', async () => {
-  // Save original reference
-  const originalEvents = events.event;
-
-  // Replace with a getter that throws
-  Object.defineProperty(events, 'event', {
-    get() {
-      throw new Error('Simulated fetch error');
-    },
-    configurable: true
-  });
-
-  const res = await request(app).get('/api/event/all');
-  expect(res.statusCode).toBe(500);
-  expect(res.body.message).toBe('Failed to fetch events');
-
-  // Restore original reference
-  Object.defineProperty(events, 'event', {
-    value: originalEvents,
-    writable: true,
-    configurable: true,
-  });
-});
-
-it('should send notifications to matched volunteers when event is updated', async () => {
-  // Setup a matching volunteer
-  matches.length = 0; // Clear previous data
-  matches.push({
-    eventId: 'ev123',
-    volunteerId: 'vol1'
-  });
-
-  await request(app).post('/api/event').send(validEvent);
-
-  expect(notificationService.sendNotification).toHaveBeenCalledWith(
-    'vol1',
-    expect.objectContaining({
-      type: 'event_update',
-      message: expect.stringContaining("Test Event"),
-      data: expect.objectContaining({
-        eventId: 'ev123',
-        eventName: 'Test Event'
-      })
-    })
-  );
 });

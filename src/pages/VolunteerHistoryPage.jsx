@@ -1,22 +1,76 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { db } from '../firebase';
+import api from '../firebase';
+import { collection, onSnapshot } from 'firebase/firestore';
 
 function VolunteerHistoryPage() {
   const navigate = useNavigate();
+  const [events, setEvents] = useState([]);
   const [volunteers, setVolunteers] = useState([]);
+  const [matches, setMatches] = useState([]);
   const [selectedVolunteer, setSelectedVolunteer] = useState(null);
+  const [eventHistory, setEventHistory] = useState([]);
 
   useEffect(() => {
-    fetch('http://localhost:3001/api/profile/volunteer-history')
-      .then(res => res.json())
-      .then(data => {
-        setVolunteers(data);
-        setSelectedVolunteer(data[0] || null);
-      })
-      .catch(err => {
-        console.error('Failed to load volunteer history:', err);
-      });
+    fetchVolunteers();
   }, []);
+
+  useEffect(() => {
+    // Set up a real-time listener for the 'matches' collection
+    const unsubscribe = onSnapshot(collection(db, 'matches'), snapshot => {
+      console.log("Firestore 'matches' collection changed. Re-fetching data...");
+      // Re-fetch volunteers and history whenever matches change
+      fetchVolunteers(); // This will trigger re-fetching selected volunteer's history via its useEffect
+    }, error => {
+      console.error("Error listening to matches collection:", error);
+    });
+
+    // Clean up the listener when the component unmounts
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (selectedVolunteer) {
+      fetchVolunteerHistory(selectedVolunteer.id);
+    } else {
+      setEventHistory([]); // Clear history if no volunteer is selected
+    }
+  }, [selectedVolunteer]);
+
+  const fetchVolunteers = async () => {
+    try {
+      //const response = await api.get('/profile/volunteers');
+      const response = await api.get('/profile/volunteer-history');
+      setVolunteers(response.data);
+      if (response.data.length > 0 && !selectedVolunteer) { // Only set initial selected volunteer if none is chosen
+        setSelectedVolunteer(response.data[0]);
+      } else if (selectedVolunteer) {
+        // If a volunteer was already selected, find them in the updated list
+        const updatedSelectedVolunteer = response.data.find(vol => vol.id === selectedVolunteer.id);
+        if (updatedSelectedVolunteer) {
+          setSelectedVolunteer(updatedSelectedVolunteer);
+        } else if (response.data.length > 0) {
+          // If the previously selected volunteer is no longer in the list, select the first one
+          setSelectedVolunteer(response.data[0]);
+        } else {
+          setSelectedVolunteer(null); // No volunteers left
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load volunteers:', err);
+    }
+  };
+
+  const fetchVolunteerHistory = async (volunteerId) => {
+    try {
+      const response = await api.get(`/matching/volunteer-history/${volunteerId}`);
+      setEventHistory(response.data.data);
+    } catch (err) {
+      console.error('Failed to load volunteer history:', err);
+      setEventHistory([]);
+    }
+  };
 
   const thStyle = {
     padding: '0.75rem',

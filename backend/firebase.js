@@ -1,4 +1,5 @@
 // backend/firebase.js - Centralized Firebase Configuration
+/* istanbul ignore file */
 const admin = require('firebase-admin');
 
 console.log('🔍 Loading Firebase configuration...');

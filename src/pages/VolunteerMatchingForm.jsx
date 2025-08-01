@@ -6,20 +6,17 @@ import api from '../firebase';
 
 function VolunteerMatchingForm() {
   
-  const navigate = useNavigate();
-  
   // state for events and volunteers
-  const [events, setEvents] = useState([]);
-  const [volunteers, setVolunteers] = useState([]);
-  const [matches, setMatches] = useState([]);
-  const [matchNotifications, setMatchNotifications] = useState({});
-  
-  // form state
-  const [selectedEvent, setSelectedEvent] = useState(null);
-  const [selectedVolunteer, setSelectedVolunteer] = useState(null);
-  const [errors, setErrors] = useState({});
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingVolunteers, setIsLoadingVolunteers] = useState(false);
+    const navigate = useNavigate();
+    const [events, setEvents] = useState([]);
+    const [volunteers, setVolunteers] = useState([]);
+    const [matches, setMatches] = useState([]);
+    const [errors, setErrors] = useState({});
+    const [isLoading, setIsLoading] = useState(true);
+    const [isLoadingVolunteers, setIsLoadingVolunteers] = useState(false);
+    const [selectedEvent, setSelectedEvent] = useState(null);
+    const [selectedVolunteer, setSelectedVolunteer] = useState(null);
+    const [successMessage, setSuccessMessage] = useState(''); 
 
   // load events and existing matches on component mount
   useEffect(() => {
@@ -76,7 +73,9 @@ function VolunteerMatchingForm() {
       console.log('📡 Response status:', response.status);
 
       if (!response.ok) {
-        throw new Error('Failed to fetch matching volunteers');
+        const errorData = await response.json();
+        console.error('Error details:', errorData);
+        throw new Error(errorData.message || 'Failed to fetch matching volunteers');
       }
       
       const data = await response.json();
@@ -95,38 +94,48 @@ function VolunteerMatchingForm() {
 
 
   // fetch existing matches and their notifications
-  const fetchExistingMatches = async () => {
+  const fetchExistingMatches = async  (updateState = true) => {
     try {
       const response = await fetch('http://localhost:3001/api/matching/matches', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
         }
       });
       
       if (!response.ok) {
-        throw new Error('Failed to fetch existing matches');
+        throw new Error('Failed to fetch matches');
       }
       
       const data = await response.json();
-      setMatches(data.data);
-
-      // Fetch notifications for each volunteer in the matches
-      const notificationsMap = {};
-      await Promise.all(data.data.map(async (match) => {
-        try {
-          const res = await api.get(`/notifications/${match.volunteer.id}`);
-          notificationsMap[match.id] = res.data.notifications || [];
-        } catch (e) {
-          notificationsMap[match.id] = [];
-        }
-      }));
-      setMatchNotifications(notificationsMap);
+      if (updateState) {
+        setMatches(data.data);
+      }
+      return data.data;
     } catch (error) {
-      console.error('Error fetching existing matches:', error);
-      setErrors({ matches: 'Failed to load existing matches.' });
+      console.error('Error:', error);
+      if (updateState) {
+        setErrors({ matches: error.message });
+      }
+      throw error;
     }
   };
 
+    const handleMatchSuccess = () => {
+      // Reset form state
+      setSelectedEvent(null);
+      setSelectedVolunteer(null);
+      setVolunteers([]);
+      setErrors({});
+      // setMatches([]);
+      
+      // Optionally navigate away
+      // navigate('/admin-dashboard');
+      
+      // Or show temporary success message
+      setSuccessMessage('Match created successfully!');
+      setTimeout(() => setSuccessMessage(''), 3000);
+    };
 
   // handle form submission to create a new match
   const handleMatch = async (e) => {
@@ -137,7 +146,7 @@ function VolunteerMatchingForm() {
     if (!selectedVolunteer) newErrors.volunteer = 'Please select a volunteer';
     
     setErrors(newErrors);
-
+  
     if (selectedEvent && selectedVolunteer) {
       try {
         const response = await fetch('http://localhost:3001/api/matching/matches', {
@@ -151,28 +160,30 @@ function VolunteerMatchingForm() {
             eventId: selectedEvent.value
           })
         });
+  
+        // Check response content type first
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          const text = await response.text();
+          throw new Error(`Server returned ${response.status}: ${text}`);
+        }
+  
+        const data = await response.json();
         
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || 'Failed to create match');
+          throw new Error(data.message || 'Failed to create match');
         }
+  
+        // Success case
+        setMatches(prev => [...prev, data.data]);
+        handleMatchSuccess(); // Refresh the matches list
         
-        // refresh matches and reset form
-        await fetchExistingMatches();
-        setSelectedEvent(null);
-        setSelectedVolunteer(null);
-        setVolunteers([]);
-        setErrors({});
-        
-        // show success message
-        alert('Match created successfully!');
       } catch (error) {
         console.error('Error creating match:', error);
         setErrors({ submit: error.message });
       }
     }
   };
-
   
    //handle removing a match
   const handleUnmatch = async (matchId) => {
@@ -185,15 +196,21 @@ function VolunteerMatchingForm() {
       });
       
       if (!response.ok) {
+        const errorData = await response.json();
         throw new Error('Failed to delete match');
       }
       
       // refresh matches after successful deletion
+      setMatches(prev => prev.filter(m => m.id !== matchId));
       await fetchExistingMatches();
-      alert('Match removed successfully!');
+      //alert('Match removed successfully!');
+      setSuccessMessage('Match removed successfully!');
+      setTimeout(() => setSuccessMessage(''), 3000);
     } catch (error) {
       console.error('Error deleting match:', error);
-      setErrors({ submit: 'Failed to remove match. Please try again.' });
+      setErrors({ submit: error.message });
+      // Revert optimistic update if needed
+      await fetchExistingMatches();
     }
   };
 
@@ -215,7 +232,7 @@ function VolunteerMatchingForm() {
   // format volunteers for dropdown
   const volunteerOptions = volunteers.map(volunteer => ({
     value: volunteer.id,
-    label: `${volunteer.name} - ${volunteer.city}, ${volunteer.state} (Skills: ${volunteer.matchingSkills.join(', ')})
+    label: `${volunteer.name || 'Unknown'} - ${volunteer.city || 'Unknown'}, ${volunteer.state || ''} (Skills: ${(volunteer.matchingSkills || []).join(', ')})
     (Available: ${volunteer.availability ? volunteer.availability.map(date => {
       const d = new Date(date + 'T00:00:00Z');
       // Format as MM/DD/YYYY without time
@@ -381,7 +398,17 @@ function VolunteerMatchingForm() {
         <div className="matches-section" style={{ marginTop: '2rem' }}>
           <h3 style={{ color: 'black' }}>Current Matches</h3>
           {errors.matches && <p className="form-error">{errors.matches}</p>}
-          
+          {successMessage && (
+            <div className="success-message" style={{
+              backgroundColor: '#d4edda',
+              color: '#155724',
+              padding: '10px',
+              margin: '10px 0',
+              borderRadius: '4px'
+            }}>
+              {successMessage}
+            </div>
+          )}
           {matches.length === 0 ? (
             <p style={{ color: 'black' }}>No matches yet. Select an event and volunteer to create a match.</p>
           ) : (
@@ -449,7 +476,6 @@ function VolunteerMatchingForm() {
             </ul>
           )}
         </div>
-
         {/* Back button */}
         <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginTop: '2rem' }}>
           <button 

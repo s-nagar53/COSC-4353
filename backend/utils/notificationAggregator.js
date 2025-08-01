@@ -1,4 +1,4 @@
-const matchData = require('../data/memoryMatches');
+const { db } = require('../firebase');
 const notificationService = require('./notificationService');
 
 class NotificationAggregator {
@@ -9,14 +9,24 @@ class NotificationAggregator {
   static async getMatchNotifications() {
     const notificationsMap = {};
     
-    for (const match of matchData.matches) {
-      try {
-        const notifications = await notificationService.getNotifications(match.volunteerId);
-        notificationsMap[match.id] = notifications;
-      } catch (error) {
-        console.error(`Error fetching notifications for volunteer ${match.volunteerId}:`, error);
-        notificationsMap[match.id] = [];
+    try {
+      // Get all matches from Firestore
+      const matchesSnapshot = await db.collection('matches').get();
+      
+      for (const matchDoc of matchesSnapshot.docs) {
+        const match = matchDoc.data();
+        const matchId = matchDoc.id;
+        
+        try {
+          const notifications = await notificationService.getNotifications(match.volunteerId);
+          notificationsMap[matchId] = notifications;
+        } catch (error) {
+          console.error(`Error fetching notifications for volunteer ${match.volunteerId}:`, error);
+          notificationsMap[matchId] = [];
+        }
       }
+    } catch (error) {
+      console.error('Error fetching matches from Firestore:', error);
     }
     
     return notificationsMap;
