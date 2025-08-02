@@ -10,6 +10,26 @@ const urgencyMap = {
   '4': { label: 'Critical', bg: '#f5c6cb', color: '#721c24' }    // darker red
 };
 
+const formatDate = (ts) => {
+  if (!ts) return '';
+  try {
+    // Check if it's a Firestore timestamp object in raw form
+    if (ts._seconds) {
+      const date = new Date(ts._seconds * 1000); // Convert seconds to ms
+      return isNaN(date.getTime()) ? '' : date.toLocaleDateString();
+    }
+
+    // Try fallback
+    const date = new Date(ts);
+    return isNaN(date.getTime()) ? '' : date.toLocaleDateString();
+  } catch (err) {
+    console.error('❌ Error parsing timestamp:', err);
+    return '';
+  }
+};
+
+
+
 function VolunteerDashboard({ user }) {
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
@@ -20,6 +40,7 @@ function VolunteerDashboard({ user }) {
     if (user?.uid) {
       return api.get(`/notifications/${user.uid}`)
         .then(res => {
+          console.log('📬 Notifications fetched:', res.data.notifications); 
           setNotifications(res.data.notifications);
         })
         .catch(() => setNotifications([]));
@@ -300,6 +321,11 @@ function VolunteerDashboard({ user }) {
                 <p style={{ color: '#666', margin: 0, fontSize: '1.1rem' }}>No notifications at this time.</p>
               </div>
             ) : (
+              <div style={{
+  maxHeight: '400px', // or adjust as needed
+  overflowY: 'auto',
+  paddingRight: '0.5rem' // avoids scrollbar overlapping content
+}}>
               <ul style={{ listStyle: 'none', padding: 0 }}>
                 {sortedNotifications.map((notif, idx) => (
                   <li key={idx} style={{
@@ -327,7 +353,7 @@ function VolunteerDashboard({ user }) {
                       <div style={{ flex: 1 }}>
                         <span style={{ color: '#000', fontSize: '1rem', lineHeight: '1.4' }}>{notif.message}</span>
                         <div style={{ fontSize: '0.9em', color: '#357189', marginTop: '0.5rem', fontWeight: '500' }}>
-                          {notif.timestamp ? new Date(notif.timestamp).toLocaleDateString() : ''}
+                          {formatDate(notif.timestamp)}
                         </div>
                       </div>
                       <button
@@ -364,6 +390,7 @@ function VolunteerDashboard({ user }) {
                   </li>
                 ))}
               </ul>
+              </div>
             )}
           </div>
         </div>
