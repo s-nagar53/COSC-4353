@@ -364,7 +364,7 @@ describe('Event Routes', () => {
       expect(response.body.message).toBe('Validation errors');
       expect(response.body.errors).toEqual(['Invalid event name', 'Invalid city']);
     });
-
+    
     it('should send notifications to matched volunteers on update', async () => {
       mockGet.mockResolvedValue({ exists: true });
       mockUpdate.mockResolvedValue();
@@ -401,6 +401,7 @@ describe('Event Routes', () => {
         }
       });
     });
+    
 
     it('should handle empty availability array', async () => {
       const dataWithEmptyAvailability = {
@@ -525,6 +526,7 @@ describe('Event Routes', () => {
       notificationService.sendNotification.mockResolvedValue();
     });
 
+    
     it('should delete event successfully', async () => {
       mockGet.mockResolvedValue({
         exists: true,
@@ -547,6 +549,7 @@ describe('Event Routes', () => {
       expect(response.body.message).toBe('Event deleted successfully');
       expect(mockDelete).toHaveBeenCalled();
     });
+    
 
     it('should return 404 when trying to delete non-existent event', async () => {
       mockGet.mockResolvedValue({ exists: false });
@@ -559,6 +562,8 @@ describe('Event Routes', () => {
       expect(mockDelete).not.toHaveBeenCalled();
     });
 
+    
+
     it('should send cancellation notifications to matched volunteers', async () => {
       mockGet.mockResolvedValue({
         exists: true,
@@ -566,6 +571,7 @@ describe('Event Routes', () => {
       });
       mockDelete.mockResolvedValue();
       
+
       // Mock matches with volunteers
       const mockMatchesSnapshot = {
         forEach: jest.fn((callback) => {
@@ -590,11 +596,14 @@ describe('Event Routes', () => {
         type: 'event_cancelled',
         message: "Event 'Test Event' has been cancelled or deleted.",
         data: {
-          eventId: 'event123'
+          eventId: 'event123',
+          userId: 'vol1'
         }
       });
     });
-
+    
+    
+  
     it('should handle missing eventname in deletion notifications', async () => {
       const eventDataWithoutName = { eid: 'event123', city: 'Houston' };
       
@@ -623,11 +632,12 @@ describe('Event Routes', () => {
         type: 'event_cancelled',
         message: "Event 'event123' has been cancelled or deleted.",
         data: {
-          eventId: 'event123'
+          eventId: 'event123',
+          userId: "vol1"
         }
       });
     });
-
+  
     it('should handle notification errors gracefully during deletion', async () => {
       mockGet.mockResolvedValue({
         exists: true,

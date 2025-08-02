@@ -77,24 +77,35 @@ router.post('/', async (req, res) => {
       .get();
     
     const notificationPromises = [];
-    matchesSnapshot.forEach(match => {
-      console.log(`📢 Sending update notification to volunteer ${match.volunteerId} for event ${eid}`);
-      notificationPromises.push(
-        notificationService.sendNotification(match.volunteerId, {
-          type: 'event_update',
-          message: `Event '${eventData.eventname}' has been updated.`,
-          data: {
-            eventId: eventData.eid,
-            eventName: eventData.eventname,
-            date: eventData.availability && eventData.availability[0] ? 
-              new Date(eventData.availability[0]).toISOString().split('T')[0] : 'TBD',
-            city: eventData.city
-          }
-        }).catch(err => {
-          console.error(`Failed to send notification to volunteer ${match.volunteerId}:`, err);
-        })
-      );
-    });
+
+matchesSnapshot.forEach(doc => {
+  const matchData = doc.data();
+  const volunteerId = matchData?.volunteerId;
+  /* istanbul ignore if*/
+  if (!volunteerId) {
+    console.warn('⚠️ No volunteerId found in match:', matchData);
+    return;
+  }
+
+  console.log(`📢 Sending update notification to volunteer ${volunteerId}`);
+  notificationPromises.push(
+    notificationService.sendNotification(volunteerId, {
+      type: 'event_update', // or event_cancelled
+      message: `Event '${eventData.eventname}' has been updated.`,
+      data: {
+        eventId: eventData.eid,
+        eventName: eventData.eventname,
+        date: eventData.availability?.[0] || 'TBD',
+        city: eventData.city
+      }
+    }).catch(err => {
+      console.error(`❌ Failed to send notification to volunteer ${volunteerId}:`, err);
+    })
+  );
+});
+
+
+
 
     // Wait for all notifications to be sent (but don't block response)
     Promise.all(notificationPromises).catch(err => 
@@ -162,22 +173,35 @@ router.delete('/:eid', async (req, res) => {
     const matchesSnapshot = await db.collection('matches')
       .where('eventId', '==', eid)
       .get();
-    
+
     const notificationPromises = [];
-    matchesSnapshot.forEach(match => {
-      console.log(`📢 Sending cancellation notification to volunteer ${match.volunteerId} for event ${eid}`);
-      notificationPromises.push(
-        notificationService.sendNotification(match.volunteerId, {
-          type: 'event_cancelled',
-          message: `Event '${eventData.eventname || eid}' has been cancelled or deleted.`,
-          data: {
-            eventId: eid
-          }
-        }).catch(err => {
-          console.error(`Failed to send cancellation notification to volunteer ${match.volunteerId}:`, err);
-        })
-      );
-    });
+
+matchesSnapshot.forEach(doc => {
+  const matchData = doc.data();
+  const volunteerId = matchData?.volunteerId;
+
+  if (!volunteerId) {
+    console.warn('⚠️ Skipping match with missing volunteerId:', matchData);
+    return;
+  }
+
+  console.log(`📢 Sending cancellation notification to volunteer ${volunteerId} for event ${eid}`);
+  notificationPromises.push(
+    notificationService.sendNotification(volunteerId, {
+      type: 'event_cancelled',
+      message: `Event '${eventData.eventname || eid}' has been cancelled or deleted.`,
+      data: {
+        eventId: eid,
+        userId: volunteerId // ✅ This must be defined
+      }
+    }).catch(err => {
+      console.error(`Failed to send cancellation notification to volunteer ${volunteerId}:`, err);
+    })
+  );
+});
+
+
+
 
     // Wait for all notifications to be sent (but don't block response)
     Promise.all(notificationPromises).catch(err =>

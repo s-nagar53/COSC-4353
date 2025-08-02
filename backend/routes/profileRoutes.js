@@ -73,7 +73,8 @@ router.get('/volunteer-history', async (req, res) => {
     });
 
     res.status(200).json(volunteers);
-  } catch (err) {
+  }
+  catch (err) {
     res.status(500).json({ message: 'Firestore error', error: err.message });
   }
 });
@@ -89,7 +90,8 @@ router.get('/:uid', async (req, res) => {
     if (!doc.exists) return res.status(404).json({ message: 'Profile not found' });
 
     res.status(200).json(doc.data());
-  } catch (err) {
+  }
+  catch (err) {
     res.status(500).json({ message: 'Firestore error', error: err.message });
   }
 });

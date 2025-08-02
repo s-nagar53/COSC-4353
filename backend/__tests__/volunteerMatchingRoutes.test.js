@@ -960,6 +960,7 @@ describe('Volunteer Matching Routes - 80%+ Coverage', () => {
     });
 
     it('should return 404 when volunteer not found', async () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
       __mockControls.setDocExists(false);
       
       const res = await request(app).get('/api/matching/volunteer-history/nonexistent');
@@ -1016,4 +1017,5 @@ describe('Volunteer Matching Routes - 80%+ Coverage', () => {
     });
   });
 });
+
 
