@@ -1165,7 +1165,6 @@ router.get('/volunteer-history/:volunteerId', async (req, res) => {
         if (hasFutureDate) {
           participationStatus = 'Current';
         }
-        /* istanbul ignore else*/ 
         else {
           // All dates have passed, mark as Completed
           participationStatus = 'Completed'; 
