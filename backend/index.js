@@ -48,6 +48,10 @@ app.use('/api/matching', volunteerMatchingRoutes);
 const statesRoutes = require('./routes/statesRoutes');
 app.use('/api/states', statesRoutes);
 
+const reportRoutes = require('./routes/reportRoutes');
+app.use('/api', reportRoutes);
+
+
 // Test route to verify backend is working
 app.get('/api/test', (req, res) => {
   res.json({ 

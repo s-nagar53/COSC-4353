@@ -7,7 +7,9 @@ import api from '../firebase';
 
 
 function AdminDashboard({ user }) {
+  
   const navigate = useNavigate();
+  /*
   const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
@@ -17,7 +19,7 @@ function AdminDashboard({ user }) {
         .catch(() => setNotifications([]));
     }
   }, [user]);
-
+*/
   const handleSubmit = (e) => {
     e.preventDefault();
     // This won't be called since buttons are type="button"
@@ -39,8 +41,8 @@ function AdminDashboard({ user }) {
     navigate('/admin-profile');
   };
 
-  const handleNotifications = () => {
-    navigate('/notification');
+  const handleReports = () => {
+    navigate('/reports');
   };
 
   const handleHistory = () => {
@@ -80,8 +82,8 @@ function AdminDashboard({ user }) {
           <button type="button" onClick={handleEditProfile} style={{ marginTop: '1rem' }}>
             Edit Profile
           </button>
-          <button type="button" onClick={handleNotifications} style={{ marginTop: '1rem' }}>
-            View Notifications
+          <button type="button" onClick={handleReports} style={{ marginTop: '1rem' }}>
+            Reporting Module
           </button>
           <button type="button" onClick={handleLogout} style={{ marginTop: '1rem', backgroundColor: '#d9534f', color: 'white' }}>
             Logout
