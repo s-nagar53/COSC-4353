@@ -3,6 +3,7 @@ const router = express.Router();
 const { db } = require('../firebase'); // Import Firestore
 const { validateEvent } = require('../utils/validateEvent');
 const notificationService = require('../utils/notificationService');
+const admin = require('firebase-admin');
 
 // Get all events (MUST come before /:eid)
 router.get('/all', async (req, res) => {
@@ -150,72 +151,52 @@ router.get('/:eid', async (req, res) => {
 
 // Delete event
 router.delete('/:eid', async (req, res) => {
-  try {
-    const eid = req.params.eid;
-    
-    const eventRef = db.collection('events').doc(eid);
-    const eventDoc = await eventRef.get();
-    
-    if (!eventDoc.exists) {
-      console.log('❌ Event not found for deletion:', eid);
-      return res.status(404).json({ message: 'Event not found' });
-    }
+  const { eid } = req.params;
+  const batch = db.batch();
 
-    // Get event data before deletion for notifications
-    const eventData = eventDoc.data();
-    
-    // Delete the event
-    await eventRef.delete();
-    
-    console.log('✅ Event deleted:', eid);
-    
-    // Notify all matched volunteers for this event about the cancellation
+  try {
+    console.log(`🗑️ Starting deletion process for event: ${eid}`);
+
+    // 1. Get all matches for this event
     const matchesSnapshot = await db.collection('matches')
       .where('eventId', '==', eid)
       .get();
 
-    const notificationPromises = [];
+    // 2. Remove the event from each volunteer's history
+    const updatePromises = matchesSnapshot.docs.map(doc => {
+      const volunteerId = doc.data().volunteerId;
+      const volunteerRef = db.collection('users').doc(volunteerId);
 
-matchesSnapshot.forEach(doc => {
-  const matchData = doc.data();
-  const volunteerId = matchData?.volunteerId;
+      console.log(`🧹 Removing event ${eid} from volunteer ${volunteerId}'s history`);
+      // Use arrayRemove to safely delete the event from the history array
+      return volunteerRef.update({
+        history: admin.firestore.FieldValue.arrayRemove({ eventId: eid })
+      });
+    });
 
-  if (!volunteerId) {
-    console.warn('⚠️ Skipping match with missing volunteerId:', matchData);
-    return;
-  }
+    await Promise.all(updatePromises);
+    console.log(`✅ Removed event from volunteer histories.`);
 
-  console.log(`📢 Sending cancellation notification to volunteer ${volunteerId} for event ${eid}`);
-  notificationPromises.push(
-    notificationService.sendNotification(volunteerId, {
-      type: 'event_cancelled',
-      message: `Event '${eventData.eventname || eid}' has been cancelled or deleted.`,
-      data: {
-        eventId: eid,
-        userId: volunteerId // ✅ This must be defined
-      }
-    }).catch(err => {
-      console.error(`Failed to send cancellation notification to volunteer ${volunteerId}:`, err);
-    })
-  );
-});
+    // 3. Delete all matching documents for this event
+    matchesSnapshot.docs.forEach(doc => {
+      console.log(`🚮 Deleting match document: ${doc.id}`);
+      batch.delete(doc.ref);
+    });
 
+    // 4. Delete the event itself
+    const eventRef = db.collection('events').doc(eid);
+    batch.delete(eventRef);
+    console.log(`🚮 Deleting event document: ${eid}`);
 
+    // Commit all deletions in a single batch operation
+    await batch.commit();
 
-
-    // Wait for all notifications to be sent (but don't block response)
-    Promise.all(notificationPromises).catch(err =>
-      /* istanbul ignore next */ 
-      console.error('Error sending notifications:', err)
-    );
-    
-    res.json({ message: 'Event deleted successfully' });
+    res.status(200).json({ message: `Event ${eid} and all related data deleted successfully` });
   } catch (error) {
-    /* istanbul ignore next */
-    console.error('Error deleting event:', error);
-    /* istanbul ignore next */
-    res.status(500).json({ message: 'Failed to delete event' });
+    console.error(`Error deleting event ${eid}:`, error);
+    res.status(500).json({ message: 'Failed to delete event and related data' });
   }
 });
+
 
 module.exports = router;

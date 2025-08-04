@@ -1,7 +1,103 @@
 const express = require('express');
 const router = express.Router();
 const PDFDocument = require('pdfkit');
-const { getEventData } = require('../utils/reportService');
+const { stringify } = require('csv-stringify');
+const { getVolunteerData, getEventData  } = require('../utils/reportService');
+
+// GET /api/report/download/volunteers/pdf
+// New route for downloading the volunteer history PDF
+router.get('/report/download/volunteers/pdf', async (req, res) => {
+  try {
+    const volunteers = await getVolunteerData();
+    const doc = new PDFDocument();
+    let buffers = [];
+    doc.on('data', buffers.push.bind(buffers));
+    doc.on('end', () => {
+      let pdfBuffer = Buffer.concat(buffers);
+      res.writeHead(200, {
+        'Content-Length': Buffer.byteLength(pdfBuffer),
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': 'attachment;filename=volunteer_history.pdf',
+      }).end(pdfBuffer);
+    });
+    doc.fontSize(16).text('Volunteer History Report', { align: 'center' });
+    doc.moveDown();
+    volunteers.forEach(volunteer => {
+      doc.fontSize(12).text(`Name: ${volunteer.name}`);
+      doc.text(`Email: ${volunteer.email}`);
+      doc.text(`Address: ${volunteer.city}, ${volunteer.state} ${volunteer.zip}`);
+      doc.text(`Skills: ${volunteer.skills}`);
+      doc.text(`Total Events: ${volunteer.totalEvents}`);
+      doc.moveDown();
+      if (volunteer.history && volunteer.history.length > 0) {
+        doc.fontSize(10).text('Event History:');
+        volunteer.history.forEach(event => {
+          doc.text(`- ${event.eventName} on ${event.eventDate} (${event.participationStatus})`);
+        });
+      } else {
+        doc.text('- No event history recorded.');
+      }
+      doc.moveDown(2);
+    });
+    doc.end();
+  } catch (error) {
+    console.error('Error generating PDF report:', error);
+    res.status(500).json({ message: 'Failed to generate PDF report', error: error.message });
+  }
+});
+
+// New route for downloading the volunteer history CSV
+router.get('/report/download/volunteers/csv', async (req, res) => {
+  try {
+    const volunteers = await getVolunteerData();
+    const csvData = [];
+    volunteers.forEach(volunteer => {
+      if (volunteer.history && volunteer.history.length > 0) {
+        volunteer.history.forEach(event => {
+          csvData.push({
+            'Volunteer Name': volunteer.name,
+            'Email': volunteer.email,
+            'City': volunteer.city,
+            'State': volunteer.state,
+            'Zip': volunteer.zip,
+            'Skills': volunteer.skills,
+            'Total Events': volunteer.totalEvents,
+            'Event Name': event.eventName,
+            'Participation Status': event.participationStatus,
+            'Event Date': event.eventDate,
+          });
+        });
+      } else {
+         csvData.push({
+            'Volunteer Name': volunteer.name,
+            'Email': volunteer.email,
+            'City': volunteer.city,
+            'State': volunteer.state,
+            'Zip': volunteer.zip,
+            'Skills': volunteer.skills,
+            'Total Events': volunteer.totalEvents,
+            'Event Name': 'N/A',
+            'Participation Status': 'N/A',
+            'Event Date': 'N/A',
+          });
+      }
+    });
+    const headers = [
+      'Volunteer Name', 'Email', 'City', 'State', 'Zip', 'Skills',
+      'Total Events', 'Event Name', 'Participation Status', 'Event Date'
+    ];
+    stringify(csvData, { header: true, columns: headers }, (err, output) => {
+      if (err) throw err;
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename="volunteer_history.csv"');
+      res.send(output);
+    });
+  } catch (error) {
+    console.error('Error generating CSV report:', error);
+    res.status(500).json({ message: 'Failed to generate CSV report', error: error.message });
+  }
+});
+
 
 router.get('/report/download/events/pdf', async (req, res) => {
   try {

@@ -130,10 +130,34 @@ export function ManageEvent() {
     if (!userToken) return;
     
     if (window.confirm('Are you sure you want to delete this event?')) {
+      // try {
+      //   await deleteEvent(eid, userToken);
+      //   // Remove the deleted event from local state
+      //   setEvents(events.filter(event => event.eid !== eid));
+      // } catch (error) {
+      //   console.error('Error deleting event:', error);
+      //   alert('Failed to delete event. Please try again.');
+      // }
       try {
-        await deleteEvent(eid, userToken);
-        // Remove the deleted event from local state
-        setEvents(events.filter(event => event.eid !== eid));
+        const response = await fetch(`http://localhost:3001/api/event/${eid}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${userToken}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to delete event');
+        }
+
+        const data = await response.json();
+        console.log(data.message);
+
+        // Re-fetch events to update the list
+        const updatedEvents = await getEvents(userToken);
+        setEvents(updatedEvents);
+
       } catch (error) {
         console.error('Error deleting event:', error);
         alert('Failed to delete event. Please try again.');

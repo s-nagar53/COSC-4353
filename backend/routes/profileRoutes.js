@@ -58,23 +58,54 @@ router.post('/:uid/history', async (req, res) => {
 // Get all volunteer profiles with history
 router.get('/volunteer-history', async (req, res) => {
   try {
-    const snapshot = await db.collection('users').where('role', '==', 'volunteer').get();
+    const usersSnapshot = await db.collection('users').where('role', '==', 'volunteer').get();
+    const volunteers = {};
 
-    const volunteers = snapshot.docs.map(doc => {
+    usersSnapshot.forEach(doc => {
       const data = doc.data();
-      return {
-        uid: doc.id,
+      volunteers[doc.id] = {
+        id: doc.id,
         name: data.name,
         email: data.email || '',
         skills: data.skills || [],
-        totalEvents: data.history?.length || 0,
-        history: data.history || []
+        totalEvents: 0,
+        history: []
       };
     });
+    
+    // Fetch all matches to build the history
+    const matchesSnapshot = await db.collection('matches').get();
+    const eventPromises = [];
 
-    res.status(200).json(volunteers);
+    matchesSnapshot.forEach(doc => {
+      const match = doc.data();
+      const volunteer = volunteers[match.volunteerId];
+
+      if (volunteer) {
+        eventPromises.push(
+          db.collection('events').doc(match.eventId).get().then(eventDoc => {
+            if (eventDoc.exists) {
+              const eventData = eventDoc.data();
+              volunteer.history.push({
+                eventId: eventDoc.id,
+                eventName: eventData.eventname || 'Untitled Event',
+                eventDate: eventData.availability?.[0] || '',
+                participationStatus: match.participationStatus || 'Pending'
+              });
+              volunteer.totalEvents += 1;
+            }
+          })
+        );
+      }
+    });
+
+    await Promise.all(eventPromises);
+
+    const result = Object.values(volunteers);
+    res.status(200).json(result);
   }
   catch (err) {
+    console.error('Error fetching volunteer history:', err);
     res.status(500).json({ message: 'Firestore error', error: err.message });
   }
 });
