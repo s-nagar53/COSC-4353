@@ -89,6 +89,16 @@ router.get('/report/download/volunteers/csv', async (req, res) => {
     volunteers.forEach(volunteer => {
       if (volunteer.history && volunteer.history.length > 0) {
         volunteer.history.forEach(event => {
+            let eventDate = event.eventDate?.toDate
+            ? event.eventDate.toDate()
+            : new Date(event.eventDate);
+            let status = '—';
+            if (!isNaN(eventDate)) {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                eventDate.setHours(0, 0, 0, 0);
+                status = eventDate >= today ? 'Upcoming' : 'Completed';
+            }
           csvData.push({
             'Volunteer Name': volunteer.name,
             //'Email': volunteer.email,
@@ -98,7 +108,7 @@ router.get('/report/download/volunteers/csv', async (req, res) => {
             'Skills': volunteer.skills,
             'Total Events': volunteer.totalEvents,
             'Event Name': event.eventName,
-            'Participation Status': event.participationStatus,
+            'Participation Status': status,
             'Event Date': event.eventDate,
           });
         });
