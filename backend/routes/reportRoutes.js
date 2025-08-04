@@ -195,4 +195,66 @@ router.get('/report/download/events/pdf', async (req, res) => {
   }
 });
 
+router.get('/report/download/events/csv', async (req, res) => {
+  try {
+    const data = await getEventData();
+    const csvData = [];
+
+    data.forEach(event => {
+      if (event.matchedVolunteers && event.matchedVolunteers.length > 0) {
+        // Create a row for each matched volunteer
+        event.matchedVolunteers.forEach(volunteer => {
+          csvData.push({
+            'Event Name': event.eventname || 'Untitled Event',
+            'Address': event.address || '',
+            'Address 2': event.address2 || '',
+            'City': event.city || '',
+            'State': event.state || '',
+            'Zip': event.zip || '',
+            'Event Dates': event.availability || '',
+            'Urgency Level': event.urgency || 'N/A',
+            'Required Skills': event.requiredSkills || '',
+            'Volunteer Name': volunteer.volunteerName || '',
+            'Matched Skills': volunteer.matchedSkills || ''
+          });
+        });
+      } else {
+        // Create a single row for events with no matched volunteers
+        csvData.push({
+          'Event Name': event.eventname || 'Untitled Event',
+          'Address': event.address || '',
+          'Address 2': event.address2 || '',
+          'City': event.city || '',
+          'State': event.state || '',
+          'Zip': event.zip || '',
+          'Event Dates': event.availability || '',
+          'Urgency Level': event.urgency || 'N/A',
+          'Required Skills': event.requiredSkills || '',
+          'Volunteer Name': 'N/A',
+          'Matched Skills': 'N/A'
+        });
+      }
+    });
+
+    const headers = [
+      'Event Name', 'Address', 'Address 2', 'City', 'State', 'Zip',
+      'Event Dates', 'Urgency Level', 'Required Skills', 'Volunteer Name', 'Matched Skills'
+    ];
+
+    stringify(csvData, { header: true, columns: headers }, (err, output) => {
+      if (err) throw err;
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename="event_history.csv"');
+      res.send(output);
+    });
+
+  } catch (error) {
+    console.error('Error generating event history CSV:', error);
+    res.status(500).json({
+      message: 'Failed to generate CSV report',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;
