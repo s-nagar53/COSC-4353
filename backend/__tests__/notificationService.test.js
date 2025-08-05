@@ -1420,27 +1420,315 @@ describe('🔔 NotificationService', () => {
 
     it('should handle notifications with negative infinity timestamp field', async () => {
       // Arrange
-      const notificationWithNegativeInfinityTimestamp = {
-        type: 'negative-infinity-timestamp',
-        message: 'Test with negative infinity timestamp',
-        data: { eventId: 'event_555' },
-        timestamp: -Infinity
+      jest.clearAllMocks();
+      
+      const mockNotifications = [
+        {
+          id: 'notif-123',
+          data: () => ({
+            uid: 'test-user-123',
+            message: 'Test with negative infinity timestamp',
+            type: 'info',
+            timestamp: -Infinity,
+            data: { key: 'value' }
+          })
+        }
+      ];
+
+      const mockSnapshot = {
+        docs: mockNotifications
       };
-      mockAdd.mockResolvedValue({ id: 'notification-123' });
+      mockSnapshot.forEach = jest.fn((callback) => {
+        mockSnapshot.docs.forEach(callback);
+      });
+
+      mockGet.mockResolvedValue(mockSnapshot);
 
       // Act
-      await notificationService.sendNotification(testUid, notificationWithNegativeInfinityTimestamp);
+      const result = await notificationService.getNotifications('test-user-123');
 
       // Assert
-      expect(mockAdd).toHaveBeenCalledWith({
-        userId: testUid,
-        type: notificationWithNegativeInfinityTimestamp.type,
-        message: notificationWithNegativeInfinityTimestamp.message,
-        data: notificationWithNegativeInfinityTimestamp.data,
-        read: false,
-        timestamp: 'mocked-timestamp', // -Infinity is truthy, so it uses the timestamp
-        createdAt: expect.any(Date)
+      expect(mockCollection).toHaveBeenCalledWith('notifications');
+      expect(mockWhere).toHaveBeenCalledWith('uid', '==', 'test-user-123');
+      expect(mockOrderBy).toHaveBeenCalledWith('timestamp', 'desc');
+      expect(result).toHaveLength(1);
+      expect(result[0].timestamp).toBe('mocked-timestamp');
+    });
+
+    it('should handle notifications with special characters in message', async () => {
+      // Arrange
+      const mockNotifications = [
+        {
+          id: 'notif-123',
+          data: () => ({
+            uid: 'test-user-123',
+            message: 'Test with special chars: !@#$%^&*()_+-=[]{}|;:,.<>?',
+            type: 'warning',
+            timestamp: '2023-01-01T00:00:00Z',
+            data: { special: 'chars' }
+          })
+        }
+      ];
+
+      const mockSnapshot = {
+        docs: mockNotifications
+      };
+      mockSnapshot.forEach = jest.fn((callback) => {
+        mockSnapshot.docs.forEach(callback);
       });
+
+      mockGet.mockResolvedValue(mockSnapshot);
+
+      // Act
+      const result = await notificationService.getNotifications('test-user-123');
+
+      // Assert
+      expect(result).toHaveLength(1);
+      expect(result[0].message).toBe('Test with special chars: !@#$%^&*()_+-=[]{}|;:,.<>?');
+    });
+
+    it('should handle notifications with very long message', async () => {
+      // Arrange
+      const longMessage = 'A'.repeat(1000);
+      const mockNotifications = [
+        {
+          id: 'notif-123',
+          data: () => ({
+            uid: 'test-user-123',
+            message: longMessage,
+            type: 'info',
+            timestamp: '2023-01-01T00:00:00Z',
+            data: { length: longMessage.length }
+          })
+        }
+      ];
+
+      const mockSnapshot = {
+        docs: mockNotifications
+      };
+      mockSnapshot.forEach = jest.fn((callback) => {
+        mockSnapshot.docs.forEach(callback);
+      });
+
+      mockGet.mockResolvedValue(mockSnapshot);
+
+      // Act
+      const result = await notificationService.getNotifications('test-user-123');
+
+      // Assert
+      expect(result).toHaveLength(1);
+      expect(result[0].message).toBe(longMessage);
+      expect(result[0].data.length).toBe(1000);
+    });
+
+    it('should handle notifications with nested object data', async () => {
+      // Arrange
+      const mockNotifications = [
+        {
+          id: 'notif-123',
+          data: () => ({
+            uid: 'test-user-123',
+            message: 'Test with nested data',
+            type: 'info',
+            timestamp: '2023-01-01T00:00:00Z',
+            data: {
+              level1: {
+                level2: {
+                  level3: {
+                    value: 'deep nested'
+                  }
+                }
+              }
+            }
+          })
+        }
+      ];
+
+      const mockSnapshot = {
+        docs: mockNotifications
+      };
+      mockSnapshot.forEach = jest.fn((callback) => {
+        mockSnapshot.docs.forEach(callback);
+      });
+
+      mockGet.mockResolvedValue(mockSnapshot);
+
+      // Act
+      const result = await notificationService.getNotifications('test-user-123');
+
+      // Assert
+      expect(result).toHaveLength(1);
+      expect(result[0].data.level1.level2.level3.value).toBe('deep nested');
+    });
+
+    it('should handle notifications with array data containing objects', async () => {
+      // Arrange
+      const mockNotifications = [
+        {
+          id: 'notif-123',
+          data: () => ({
+            uid: 'test-user-123',
+            message: 'Test with array data',
+            type: 'info',
+            timestamp: '2023-01-01T00:00:00Z',
+            data: [
+              { id: 1, name: 'Item 1' },
+              { id: 2, name: 'Item 2' },
+              { id: 3, name: 'Item 3' }
+            ]
+          })
+        }
+      ];
+
+      const mockSnapshot = {
+        docs: mockNotifications
+      };
+      mockSnapshot.forEach = jest.fn((callback) => {
+        mockSnapshot.docs.forEach(callback);
+      });
+
+      mockGet.mockResolvedValue(mockSnapshot);
+
+      // Act
+      const result = await notificationService.getNotifications('test-user-123');
+
+      // Assert
+      expect(result).toHaveLength(1);
+      expect(result[0].data).toHaveLength(3);
+      expect(result[0].data[0].name).toBe('Item 1');
+      expect(result[0].data[2].id).toBe(3);
+    });
+
+    it('should handle notifications with circular reference data', async () => {
+      // Arrange
+      const circularObj = { name: 'circular' };
+      circularObj.self = circularObj;
+      
+      const mockNotifications = [
+        {
+          id: 'notif-123',
+          data: () => ({
+            uid: 'test-user-123',
+            message: 'Test with circular data',
+            type: 'info',
+            timestamp: '2023-01-01T00:00:00Z',
+            data: circularObj
+          })
+        }
+      ];
+
+      const mockSnapshot = {
+        docs: mockNotifications
+      };
+      mockSnapshot.forEach = jest.fn((callback) => {
+        mockSnapshot.docs.forEach(callback);
+      });
+
+      mockGet.mockResolvedValue(mockSnapshot);
+
+      // Act
+      const result = await notificationService.getNotifications('test-user-123');
+
+      // Assert
+      expect(result).toHaveLength(1);
+      expect(result[0].data.name).toBe('circular');
+      expect(result[0].data.self).toBeDefined();
+    });
+
+    it('should handle notifications with undefined type', async () => {
+      // Arrange
+      const mockNotifications = [
+        {
+          id: 'notif-123',
+          data: () => ({
+            uid: 'test-user-123',
+            message: 'Test with undefined type',
+            type: undefined,
+            timestamp: '2023-01-01T00:00:00Z',
+            data: { test: true }
+          })
+        }
+      ];
+
+      const mockSnapshot = {
+        docs: mockNotifications
+      };
+      mockSnapshot.forEach = jest.fn((callback) => {
+        mockSnapshot.docs.forEach(callback);
+      });
+
+      mockGet.mockResolvedValue(mockSnapshot);
+
+      // Act
+      const result = await notificationService.getNotifications('test-user-123');
+
+      // Assert
+      expect(result).toHaveLength(1);
+      expect(result[0].type).toBeUndefined();
+    });
+
+    it('should handle notifications with null type', async () => {
+      // Arrange
+      const mockNotifications = [
+        {
+          id: 'notif-123',
+          data: () => ({
+            uid: 'test-user-123',
+            message: 'Test with null type',
+            type: null,
+            timestamp: '2023-01-01T00:00:00Z',
+            data: { test: true }
+          })
+        }
+      ];
+
+      const mockSnapshot = {
+        docs: mockNotifications
+      };
+      mockSnapshot.forEach = jest.fn((callback) => {
+        mockSnapshot.docs.forEach(callback);
+      });
+
+      mockGet.mockResolvedValue(mockSnapshot);
+
+      // Act
+      const result = await notificationService.getNotifications('test-user-123');
+
+      // Assert
+      expect(result).toHaveLength(1);
+      expect(result[0].type).toBeNull();
+    });
+
+    it('should handle notifications with empty string type', async () => {
+      // Arrange
+      const mockNotifications = [
+        {
+          id: 'notif-123',
+          data: () => ({
+            uid: 'test-user-123',
+            message: 'Test with empty string type',
+            type: '',
+            timestamp: '2023-01-01T00:00:00Z',
+            data: { test: true }
+          })
+        }
+      ];
+
+      const mockSnapshot = {
+        docs: mockNotifications
+      };
+      mockSnapshot.forEach = jest.fn((callback) => {
+        mockSnapshot.docs.forEach(callback);
+      });
+
+      mockGet.mockResolvedValue(mockSnapshot);
+
+      // Act
+      const result = await notificationService.getNotifications('test-user-123');
+
+      // Assert
+      expect(result).toHaveLength(1);
+      expect(result[0].type).toBe('');
     });
   });
 }); 
