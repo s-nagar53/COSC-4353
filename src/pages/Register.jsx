@@ -3,6 +3,9 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../firebase';
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from '../firebase'; // Adjust if needed
+
 
 
 function Register() {
@@ -15,6 +18,7 @@ function Register() {
   const navigate = useNavigate();
   const [isAdmin, setIsAdmin] = useState(false);
 
+  /*
   const handleRegister = async (e) => {
     e.preventDefault();
   
@@ -66,6 +70,66 @@ function Register() {
       setSuccess('');
     }
   };
+*/
+const handleRegister = async (e) => {
+  e.preventDefault();
+
+  if (!email || !password) {
+    setError('Email and password are required.');
+    setSuccess('');
+    return;
+  }
+
+  if (password !== confirm) {
+    setError('Passwords do not match.');
+    setSuccess('');
+    return;
+  }
+
+  try {
+    // 1. Register user
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+
+    // 2. Assign role
+    const role = isAdmin ? 'admin' : 'volunteer';
+    console.log('Assigning role:', role, 'for UID:', user.uid);
+
+    const idToken = await user.getIdToken();
+
+    await fetch('http://localhost:3001/set-role', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${idToken}`,
+      },
+      body: JSON.stringify({ role }),
+    });
+
+    // ✅ 3. Save to Firestore
+    await setDoc(doc(db, 'users', user.uid), {
+      name,
+      email: user.email,
+      role,
+      createdAt: new Date().toISOString(),
+      history: []
+    });
+
+    // 4. Set localStorage + redirect
+    localStorage.setItem('isProfileComplete', 'false');
+    setSuccess(
+      `Registration successful! Redirecting to ${isAdmin ? 'Admin Profile' : 'Login'}...`
+    );
+    setError('');
+
+    setTimeout(() => {
+      navigate(isAdmin ? '/admin-profile' : '/login');
+    }, 2000);
+  } catch (error) {
+    setError(error.message);
+    setSuccess('');
+  }
+};
 
   return (
     <div className="page-wrapper">

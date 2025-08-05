@@ -905,7 +905,8 @@ router.post('/matches', async (req, res) => {
       const historyEntry = {
         eid: eventId,
         eventname: event.eventname,
-        eventDescription: event.eventDescription || '—',
+        //eventDescription: event.eventDescription || '—',
+        eventDescription: event.description || event.eventdescription || '',
         address: event.address || '',
         city: event.city || '',
         state: event.state || '',
@@ -1072,7 +1073,7 @@ router.delete('/matches/:matchId', async (req, res) => {
         const updatedHistory = currentHistory.filter(entry => {
           // Log each comparison to explicitly see why an entry is or isn't filtered
           console.log(`[DEBUG]   Comparing history entry.eid: ${entry.eid} (Type: ${typeof entry.eid}) with target eventId: ${eventId} (Type: ${typeof eventId})`);
-         
+          return entry.eid !== eventId;
         });
 
         console.log(`[DEBUG] Volunteer ${volunteerId} updated history (after filter):`, JSON.stringify(updatedHistory, null, 2));

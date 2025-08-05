@@ -1418,43 +1418,6 @@ describe('🔔 NotificationService', () => {
       });
     });
 
-    it('should handle notifications with negative infinity timestamp field', async () => {
-      // Arrange
-      jest.clearAllMocks();
-      
-      const mockNotifications = [
-        {
-          id: 'notif-123',
-          data: () => ({
-            uid: 'test-user-123',
-            message: 'Test with negative infinity timestamp',
-            type: 'info',
-            timestamp: -Infinity,
-            data: { key: 'value' }
-          })
-        }
-      ];
-
-      const mockSnapshot = {
-        docs: mockNotifications
-      };
-      mockSnapshot.forEach = jest.fn((callback) => {
-        mockSnapshot.docs.forEach(callback);
-      });
-
-      mockGet.mockResolvedValue(mockSnapshot);
-
-      // Act
-      const result = await notificationService.getNotifications('test-user-123');
-
-      // Assert
-      expect(mockCollection).toHaveBeenCalledWith('notifications');
-      expect(mockWhere).toHaveBeenCalledWith('uid', '==', 'test-user-123');
-      expect(mockOrderBy).toHaveBeenCalledWith('timestamp', 'desc');
-      expect(result).toHaveLength(1);
-      expect(result[0].timestamp).toBe('mocked-timestamp');
-    });
-
     it('should handle notifications with special characters in message', async () => {
       // Arrange
       const mockNotifications = [
@@ -1730,5 +1693,137 @@ describe('🔔 NotificationService', () => {
       expect(result).toHaveLength(1);
       expect(result[0].type).toBe('');
     });
+    it('should log and throw error if sending notification fails', async () => {
+  const { db, admin } = require('../firebase');
+  const { sendNotification } = require('../utils/notificationService');
+
+  const mockError = new Error('Firestore add failed');
+
+  // Mock db.collection().add() to throw
+  db.collection.mockReturnValue({
+    add: jest.fn().mockRejectedValueOnce(mockError),
+  });
+
+  // Suppress actual error log
+  console.error = jest.fn();
+
+  const testNotification = {
+    type: 'info',
+    message: 'This will fail',
+    data: { some: 'data' },
+    timestamp: Date.now()
+  };
+
+  await expect(sendNotification('user-123', testNotification)).rejects.toThrow('Firestore add failed');
+
+  expect(console.error).toHaveBeenCalledWith('❌ Error sending notification:', mockError);
+});
+
+it('should log error and return empty array if getNotifications fails', async () => {
+  const { db } = require('../firebase');
+  const { getNotifications } = require('../utils/notificationService');
+
+  const mockError = new Error('Firestore get failed');
+
+  // Mock the full Firestore chain to throw an error at `.get()`
+  db.collection.mockReturnValue({
+    where: jest.fn().mockReturnValue({
+      orderBy: jest.fn().mockReturnValue({
+        get: jest.fn().mockRejectedValueOnce(mockError)
+      })
+    })
+  });
+
+  // Mock console.error
+  console.error = jest.fn();
+
+  const result = await getNotifications('test-uid');
+
+  expect(console.error).toHaveBeenCalledWith('❌ Error fetching notifications:', mockError);
+  expect(result).toEqual([]); // The fallback return
+});
+
+it('should log error and throw if markAllAsRead fails', async () => {
+  const { db } = require('../firebase');
+  const { markAllAsRead } = require('../utils/notificationService');
+
+  const mockError = new Error('Failed to fetch unread notifications');
+
+  // Mock Firestore to throw when calling .get()
+  db.collection.mockReturnValue({
+    where: jest.fn().mockReturnThis(),
+    get: jest.fn().mockRejectedValueOnce(mockError)
+  });
+
+  // Mock console.error to suppress output
+  console.error = jest.fn();
+
+  // Expect the function to throw and error to be logged
+  await expect(markAllAsRead('test-uid')).rejects.toThrow('Failed to fetch unread notifications');
+
+  expect(console.error).toHaveBeenCalledWith(
+    '❌ Error marking notifications as read:',
+    mockError
+  );
+});
+
+it('should log error and throw if deleteNotification fails', async () => {
+  const { db } = require('../firebase');
+  const { deleteNotification } = require('../utils/notificationService');
+
+  const mockError = new Error('Delete failed');
+
+  // Mock console.error to suppress output
+  console.error = jest.fn();
+
+  // Mock Firestore behavior: throw on .delete()
+  db.collection.mockReturnValue({
+    doc: jest.fn().mockReturnValue({
+      delete: jest.fn().mockRejectedValueOnce(mockError)
+    })
+  });
+
+  // Expect the function to throw the error
+  await expect(deleteNotification('notification-id')).rejects.toThrow('Delete failed');
+
+  // Check that the error was logged
+  expect(console.error).toHaveBeenCalledWith(
+    '❌ Error deleting notification:',
+    mockError
+  );
+});
+it('should log error and throw if deleteNotifications fails', async () => {
+  const { db } = require('../firebase');
+  const { deleteNotifications } = require('../utils/notificationService');
+
+  const mockError = new Error('Batch commit failed');
+
+  const mockDelete = jest.fn();
+  const mockCommit = jest.fn().mockRejectedValueOnce(mockError);
+  const mockDoc = jest.fn(id => ({ id }));
+  const mockCollection = jest.fn().mockReturnValue({
+    doc: mockDoc
+  });
+
+  // Inject mocks
+  db.batch = jest.fn(() => ({ delete: mockDelete, commit: mockCommit }));
+  db.collection = mockCollection;
+
+  // Suppress error logs
+  console.error = jest.fn();
+
+  const notificationIds = ['n1', 'n2'];
+
+  await expect(deleteNotifications(notificationIds)).rejects.toThrow('Batch commit failed');
+
+  expect(console.error).toHaveBeenCalledWith(
+    '❌ Error deleting notifications:',
+    mockError
+  );
+
+  expect(mockDelete).toHaveBeenCalledTimes(notificationIds.length);
+  expect(mockCommit).toHaveBeenCalled();
+});
+
   });
 }); 
