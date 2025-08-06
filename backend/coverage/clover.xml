@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<coverage generated="1754437848501" clover="3.2.0">
-  <project timestamp="1754437848501" name="All files">
-    <metrics statements="678" coveredstatements="644" conditionals="458" coveredconditionals="367" methods="99" coveredmethods="91" elements="1235" coveredelements="1102" complexity="0" loc="678" ncloc="678" packages="3" files="12" classes="12"/>
+<coverage generated="1754451524501" clover="3.2.0">
+  <project timestamp="1754451524501" name="All files">
+    <metrics statements="678" coveredstatements="644" conditionals="462" coveredconditionals="371" methods="99" coveredmethods="91" elements="1239" coveredelements="1106" complexity="0" loc="678" ncloc="678" packages="3" files="12" classes="12"/>
     <package name="backend">
       <metrics statements="52" coveredstatements="43" conditionals="8" coveredconditionals="7" methods="3" coveredmethods="2"/>
       <file name="index.js" path="/Users/sakinanagarwala/COSC-4353/backend/index.js">
@@ -61,7 +61,7 @@
       </file>
     </package>
     <package name="backend.routes">
-      <metrics statements="483" coveredstatements="460" conditionals="313" coveredconditionals="229" methods="74" coveredmethods="67"/>
+      <metrics statements="483" coveredstatements="460" conditionals="315" coveredconditionals="231" methods="74" coveredmethods="67"/>
       <file name="eventRoutes.js" path="/Users/sakinanagarwala/COSC-4353/backend/routes/eventRoutes.js">
         <metrics statements="79" coveredstatements="75" conditionals="19" coveredconditionals="16" methods="12" coveredmethods="10"/>
         <line num="1" count="5" type="stmt"/>
@@ -230,7 +230,7 @@
         <line num="100" count="5" type="stmt"/>
       </file>
       <file name="reportRoutes.js" path="/Users/sakinanagarwala/COSC-4353/backend/routes/reportRoutes.js">
-        <metrics statements="94" coveredstatements="94" conditionals="94" coveredconditionals="69" methods="14" coveredmethods="14"/>
+        <metrics statements="94" coveredstatements="94" conditionals="96" coveredconditionals="71" methods="14" coveredmethods="14"/>
         <line num="1" count="5" type="stmt"/>
         <line num="2" count="5" type="stmt"/>
         <line num="3" count="5" type="stmt"/>
@@ -565,7 +565,7 @@
       </file>
     </package>
     <package name="backend.utils">
-      <metrics statements="143" coveredstatements="141" conditionals="137" coveredconditionals="131" methods="22" coveredmethods="22"/>
+      <metrics statements="143" coveredstatements="141" conditionals="139" coveredconditionals="133" methods="22" coveredmethods="22"/>
       <file name="notificationAggregator.js" path="/Users/sakinanagarwala/COSC-4353/backend/utils/notificationAggregator.js">
         <metrics statements="16" coveredstatements="14" conditionals="0" coveredconditionals="0" methods="1" coveredmethods="1"/>
         <line num="1" count="4" type="stmt"/>
@@ -628,7 +628,7 @@
         <line num="118" count="5" type="stmt"/>
       </file>
       <file name="reportService.js" path="/Users/sakinanagarwala/COSC-4353/backend/utils/reportService.js">
-        <metrics statements="48" coveredstatements="48" conditionals="60" coveredconditionals="54" methods="11" coveredmethods="11"/>
+        <metrics statements="48" coveredstatements="48" conditionals="62" coveredconditionals="56" methods="11" coveredmethods="11"/>
         <line num="1" count="6" type="stmt"/>
         <line num="4" count="5" type="stmt"/>
         <line num="5" count="5" type="stmt"/>

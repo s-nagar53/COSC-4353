@@ -328,6 +328,7 @@ describe('🔍 ReportService', () => {
             data: () => ({
               name: 'John Doe',
               phone: '123-456-7890',
+              email: 'N/A',
               address: '123 Test St',
               city: 'Test City',
               state: 'TS',
@@ -391,6 +392,7 @@ describe('🔍 ReportService', () => {
         name: 'John Doe',
         phone: '123-456-7890',
         address: '123 Test St',
+        email: 'N/A',
         city: 'Test City',
         state: 'TS',
         zip: '12345',
@@ -452,6 +454,7 @@ describe('🔍 ReportService', () => {
         city: 'N/A',
         state: 'N/A',
         zip: 'N/A',
+        email: 'N/A',
         skills: [],
         totalEvents: 0,
         history: []
