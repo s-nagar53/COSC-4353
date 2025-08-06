@@ -30,7 +30,7 @@ router.get('/report/download/volunteers/pdf', async (req, res) => {
       doc
         .fontSize(11)
         .fillColor('#333')
-        //.text(`Email: ${vol.email || 'N/A'}`)
+        .text(`Email: ${vol.email || 'N/A'}`)
         .text(`Location: ${vol.city || '—'}, ${vol.state || '—'} ${vol.zip || ''}`)
         .text(`Skills: ${(vol.skills || []).join(', ') || 'None listed'}`)
         .text(`Total Events: ${vol.totalEvents || 0}`);
@@ -101,7 +101,7 @@ router.get('/report/download/volunteers/csv', async (req, res) => {
             }
           csvData.push({
             'Volunteer Name': volunteer.name,
-            //'Email': volunteer.email,
+            'Email': volunteer.email,
             'City': volunteer.city,
             'State': volunteer.state,
             'Zip': volunteer.zip,
@@ -115,7 +115,7 @@ router.get('/report/download/volunteers/csv', async (req, res) => {
       } else {
          csvData.push({
             'Volunteer Name': volunteer.name,
-            //'Email': volunteer.email,
+            'Email': volunteer.email,
             'City': volunteer.city,
             'State': volunteer.state,
             'Zip': volunteer.zip,
@@ -128,7 +128,7 @@ router.get('/report/download/volunteers/csv', async (req, res) => {
       }
     });
     const headers = [
-      'Volunteer Name', /*'Email',*/ 'City', 'State', 'Zip', 'Skills',
+      'Volunteer Name', 'Email', 'City', 'State', 'Zip', 'Skills',
       'Total Events', 'Event Name', 'Participation Status', 'Event Date'
     ];
     stringify(csvData, { header: true, columns: headers }, (err, output) => {

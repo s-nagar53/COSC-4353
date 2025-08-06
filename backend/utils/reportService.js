@@ -111,7 +111,7 @@ async function getVolunteerData() {
 
       volunteers.push({
         name: volunteerData.name,
-        //email: volunteerData.email || 'N/A',
+        email: volunteerData.email || 'N/A',
         phone: volunteerData.phone || 'N/A',
         address: volunteerData.address || 'N/A',
         city: volunteerData.city || 'N/A',
